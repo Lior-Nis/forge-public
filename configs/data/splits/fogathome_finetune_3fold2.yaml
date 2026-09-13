@@ -1,0 +1,16 @@
+# FogAtHome participant-level CV fold 2 (Fig 12 fine-tuning curve).
+train:
+  - "a00001"
+  - "a00002"
+  - "a00006"
+  - "a00007"
+  - "a00008"
+  - "a00010"
+  - "a00012"
+val:
+  - "a00004"
+test:
+  - "a00013"
+  - "a00014"
+  - "a00009"
+  - "a00011"

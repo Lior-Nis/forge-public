@@ -1,0 +1,6 @@
+# @package _global_.train.loss
+
+_target_: model.losses.JEPALoss
+beta: 2.0
+normalize: true
+var_weight: 0.0

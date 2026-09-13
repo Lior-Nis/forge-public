@@ -1,0 +1,5 @@
+_target_: model.losses.SmoothAPLoss
+temperature: 0.01      # Sigmoid sharpness: lower = closer to true AP, higher = smoother gradients
+num_classes: 2
+pos_class: 1
+use_masked_loss: true

@@ -1,0 +1,9 @@
+# Paths config for medcontext (500-timestep) fogathome labeled dataset.
+# Used for data generation AND eval (points to zarr directly — fogathome is single-protocol).
+
+defaults:
+  - base
+  - _self_
+
+input_dir: ${.raw_root}/fogathome
+dataset_path: len500_stride200_fogstride100_fogathome.zarr

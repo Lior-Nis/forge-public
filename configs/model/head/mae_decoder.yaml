@@ -1,0 +1,10 @@
+# @package model.head
+
+_target_: model.heads.MAEDecoderHead
+encoder_embed_dim: 512
+decoder_embed_dim: 256
+decoder_depth: 2
+patch_size: 10
+input_channels: 3
+freq_bins: 1
+max_patches: 256

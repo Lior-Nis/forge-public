@@ -1,0 +1,57 @@
+# @package _global_
+# MAE pretraining with ResNetEncoder on wavelet spectrograms.
+#
+# Architecture:
+#   - Transform: wavelet [B, 3, 100, 224]
+#   - Backbone: ResNetEncoder (layer3, stride-16) → [B, 14, 1024]
+#   - Masking: temporal, patch_size=16 (aligns with stride-16)
+#   - Decoder: MAEDecoderHead → reconstructs [B, 3, 100, 224]
+#
+# Tokens: 14 (224 / 16), masked: ~7 (50%)
+
+defaults:
+  - override /model: mae
+  - override /train: mae
+  - override /data: mae
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "mae-resnet-wavelet-epoch{epoch}"
+
+global:
+  experiment_name: resnet_mae_pretraining
+
+data:
+  dataloader:
+    batch_size: 256   # default pretrain_loader is 2560 — too large for wavelet CWT + ResNet
+
+model:
+  mask_ratio: 0.5
+  mask_mode: "temporal"
+  backbone:
+    _target_: model.backbones.ResNetEncoder
+    input_channels: 3
+    resnet_model: 'resnext50_32x4d'
+    pretrained: false
+    patch_size: 16
+    embed_dim: 1024
+    output_dim: 1024
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}   # 224 = 14 * patch_size(16) — exact fit
+    interpolate: true              # resize to img_size so W is always 224
+  head:
+    freq_bins: 224          # wavelet interpolate=True → [B, 3, 224, 224], H=224
+    patch_size: 16
+    encoder_embed_dim: 1024
+    decoder_embed_dim: 512
+    decoder_depth: 4
+    decoder_num_heads: 8
+    max_patches: 32

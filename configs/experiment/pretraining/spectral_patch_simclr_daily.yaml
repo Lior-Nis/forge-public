@@ -1,0 +1,49 @@
+# @package _global_
+#
+# SimCLR contrastive pretraining with SpectralPatchEncoder on daily-living data.
+#
+# Previous SimCLR (Exp 006) failed because raw accelerometer data has ~3D intrinsic
+# dimensionality — any two augmented views trivially collapse to the same 3D signature.
+# SpectralPatchEncoder avoids this: 100 freq × 20 time patches produce a genuinely
+# high-dimensional representation that cannot be trivially matched.
+#
+# SpectralPatchEncoder outputs [B, nH*nW, D] = [B, 100, 512] tokens.
+# SimCLRHead.pool_patches=true (default in configs/model/simclr.yaml) mean-pools
+# the patch dimension → [B, 512], then projects to [B, 256] for contrastive loss.
+# No pipeline changes required.
+#
+# Uses kaggle_longcontext (block_len=1000) to match SpectralPatchEncoder input
+# [B, 3, 100, 1000]. The simclr_dataset discards labels, so the labeled
+# LabeledDataProcessor in kaggle_longcontext is harmless.
+
+defaults:
+  - override /model: simclr
+  - override /train: simclr
+  - override /data: simclr_daily
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+
+data:
+  dataloader:
+    batch_size: 320
+
+train:
+  registry:
+    artifact_name_template: "simclr-spectralpatch-wavelet-epoch{epoch}"
+
+global:
+  experiment_name: "spectral_patch_simclr_daily"

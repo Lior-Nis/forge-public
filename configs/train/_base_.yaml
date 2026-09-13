@@ -1,0 +1,15 @@
+
+defaults:
+  - optimizer: adamw
+  - scheduler: cosine
+  - loss: cross_entropy
+  - logger: classification
+  - trainer: fog_trainer
+  - callbacks: null
+  - _self_
+
+pipeline_type: classification
+
+run_name: null
+weights: null
+registry: null

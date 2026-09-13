@@ -1,0 +1,9 @@
+# Paths config for medcontext (500-timestep) kaggle daily-living unlabeled pretraining data.
+# Used for data generation AND MAE pretraining.
+
+defaults:
+  - base
+  - _self_
+
+input_dir: ${.raw_root}/kaggle_unlabeled
+dataset_path: len500_stride200_kaggle_daily_unlabeled.zarr

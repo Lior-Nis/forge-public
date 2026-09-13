@@ -1,0 +1,15 @@
+# @package model
+
+defaults:
+  - preprocessors: minimal
+  - signal_augmentor: null
+  - transform: raw
+  - spectral_augmentor: null
+  - backbone: fogformer
+  - head: jepa_predictor
+  - _self_
+
+jepa_mode: "ijepa"
+mask_ratio: 0.25
+ema_decay: 0.996
+ema_decay_end: 0.9999

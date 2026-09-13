@@ -1,0 +1,56 @@
+# @package _global_
+#
+# Patch-level SimCLR pretraining with SpectralPatchEncoder on daily-living data.
+#
+# Experiment 023 — testing the DenseCL-style hypothesis:
+#   - 021v1/v2 failed because global pooling (mean/max) collapsed 86 effective dims → 14
+#   - Patch-level loss operates on all 100 tokens independently (one NT-Xent per position)
+#   - Negatives for patch k are other samples at the SAME position k (not cross-position)
+#   - Augmentations exclude time-shifting transforms (PhaseShift, TimeWarp, Resize)
+#     to preserve patch positional correspondence between views
+#
+# Key config changes vs spectral_patch_simclr_daily:
+#   head.apply_per_patch=true  — MLP applied per token, returns [B, N, 256]
+#   head.pool_patches=false    — no aggregation before projection
+#   model/signal_augmentor=contrastive_patch_aligned  — no time-shift augmentors
+
+defaults:
+  - override /model: simclr
+  - override /train: simclr
+  - override /data: simclr_daily
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /model/signal_augmentor: contrastive_patch_aligned
+  - _self_
+
+model:
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+
+  head:
+    _target_: model.heads.SimCLRHead
+    encoder_dim: 512
+    projection_dim: 256
+    pool_patches: false
+    apply_per_patch: true
+
+data:
+  dataloader:
+    batch_size: 256
+
+train:
+  trainer:
+    max_epochs: 100
+  registry:
+    artifact_name_template: "simclr-spectralpatch-wavelet-dense-epoch{epoch}"
+
+global:
+  experiment_name: "spectral_patch_dense_simclr_daily"

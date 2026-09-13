@@ -1,0 +1,3 @@
+# @package train.loss
+_target_: model.losses.classification.FogRatioLoss
+reduction: none

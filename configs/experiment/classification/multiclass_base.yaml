@@ -1,0 +1,25 @@
+# @package _global_
+
+defaults:
+  - override /model: multiclass_cls
+  - override /train: binary_cls
+  - override /data: kaggle_labeled
+  - override /model/backbone@model.backbone: fogformer
+  - override /model/signal_augmentor@model.signal_augmentor: default
+  - override /train/optimizer@train.optimizer: adamw
+  - override /train/loss@train.loss: simple_ce_masked
+  - override /data/dataloader@data.dataloader: classification_loader
+  - _self_
+
+global:
+  experiment_name: "multiclass_fog_base"
+  seed: 42
+
+model:
+  head:
+    _target_: model.heads.ClassificationHead
+    input_dim: ${model.backbone.embed_dim}
+    output_dim: ${model.num_classes}
+    hidden_dim: 256
+    dropout: 0.1
+    activation: "ReLU"

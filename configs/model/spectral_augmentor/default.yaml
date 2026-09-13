@@ -1,0 +1,40 @@
+_target_: model.augmentors.SpectralAugmenter
+augmentors:
+  - _target_: model.augmentors.FrequencyMaskingAugmentor
+    augmentor_config:
+      probability: 0.4
+      max_masks: 2
+      min_mask_fraction: 0.03
+      max_mask_fraction: 0.15
+
+  - _target_: model.augmentors.TimeMaskingAugmentorSpectral
+    augmentor_config:
+      probability: 0.4
+      max_masks: 2
+      min_mask_fraction: 0.03
+      max_mask_fraction: 0.15
+
+  - _target_: model.augmentors.SpectralNoiseAugmentor
+    augmentor_config:
+      probability: 0.3
+      noise_level_range: [0.01, 0.05]
+
+  - _target_: model.augmentors.EdgeEmphasisAugmentor
+    augmentor_config:
+      probability: 0.25
+      strength_range: [0.1, 0.3]
+
+  - _target_: model.augmentors.SpectralMixupAugmentor
+    augmentor_config:
+      probability: 0.25
+      alpha: 0.2
+
+  - _target_: model.augmentors.SpectralCutMixAugmentor
+    augmentor_config:
+      probability: 0.2
+      sample_probability: 0.5
+
+  - _target_: model.augmentors.ContrastJitterAugmentor
+    augmentor_config:
+      probability: 0.3
+      contrast_range: [0.8, 1.2]

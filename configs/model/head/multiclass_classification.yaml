@@ -1,0 +1,7 @@
+# @package model.head
+
+_target_: model.heads.ClassificationHead
+input_dim: ${model.backbone.embed_dim}
+output_dim: 4
+dropout: 0.3
+activation: 'ReLU'

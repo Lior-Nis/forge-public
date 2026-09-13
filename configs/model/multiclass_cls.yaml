@@ -1,0 +1,20 @@
+# @package model
+
+defaults:
+  - preprocessors: null
+  - transform: default
+  - backbone: convnext
+  - signal_augmentor: default
+  - spectral_augmentor: default
+  - _self_
+
+img_size: ${global.img_size}
+num_classes: 4
+
+head:
+  _target_: model.heads.ClassificationHead
+  input_dim: 768
+  output_dim: ${..num_classes}
+  hidden_dim: 384
+  dropout: 0.1
+  activation: "ReLU"

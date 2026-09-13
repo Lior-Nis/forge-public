@@ -1,0 +1,22 @@
+# Kaggle longcontext (1000-timestep, 10s) — fog-biased stride + float32 fog_ratio patch_labels.
+
+defaults:
+  - _self_
+
+sampling_rate: 100
+
+lengths:
+  block_len: 1000
+  stride_len: 200
+  fog_stride_len: 100
+
+fog_ratio_labeling: true
+data_type: labeled
+
+zarr_config:
+  chunk_size: 256
+  compressor: lz4
+  compression_level: 1
+
+processor:
+  _target_: data.process.processor.labeled.LabeledDataProcessor

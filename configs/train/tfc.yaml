@@ -1,0 +1,23 @@
+defaults:
+  - optimizer: adamw
+  - scheduler: cosine
+  - loss: simclr
+  - callbacks: pretraining
+  - logger: pretraining
+  - registry: default
+  - task_manager: simclr
+  - trainer: fog_trainer
+  - _self_
+
+pipeline_type: "simclr"
+
+callbacks:
+  checkpoint:
+    dirpath: "./checkpoints/tfc"
+
+registry:
+  monitor_metric: "losses/val_loss"
+  monitor_mode: "min"
+
+optimizer:
+  lr: 1.5e-4

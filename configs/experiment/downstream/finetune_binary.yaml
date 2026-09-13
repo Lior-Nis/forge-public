@@ -1,0 +1,38 @@
+# @package _global_
+
+defaults:
+  - override /model: binary_cls
+  - override /train: binary_cls
+  - override /data: kaggle_labeled  
+  - _self_
+
+experiment_name: "finetune_binary_downstream"
+
+weight_manager:
+  enable_loading: true
+  load_strategy: "backbone_only"
+  freeze_backbone: false
+  load_from_registry: null
+  validation:
+    warn_on_mismatch: true
+    strict_loading: false
+
+train:
+  trainer:
+    max_epochs: 5
+    enable_checkpointing: false
+    enable_progress_bar: false
+    log_every_n_steps: 10
+    
+  optimizer:
+    lr: 1e-5
+    
+  logger:
+    tags: ["downstream", "finetune"]
+    name: null
+      
+data:
+  dataloader:
+    batch_size: 32
+    num_workers: 2
+    pin_memory: true

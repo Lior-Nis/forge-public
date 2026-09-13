@@ -1,0 +1,16 @@
+
+_target_: model.preprocessors.SignalPreprocessor
+preprocessors:
+  - _target_: model.preprocessors.DetrendPreprocessor
+    method: linear
+
+  - _target_: model.preprocessors.BandpassFilterPreprocessor
+    low_freq: 0.5
+    high_freq: 20.0
+    order: 4
+    sample_rate: 100
+
+  - _target_: model.preprocessors.NormalizePreprocessor
+    method: zscore
+    per_channel: true
+    epsilon: 1e-8

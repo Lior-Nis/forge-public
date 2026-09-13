@@ -1,0 +1,6 @@
+defaults:
+  - base
+  - _self_
+
+input_dir: ${.raw_root}/kaggle_labeled
+dataset_path: len200_stride20_fogstride10_anyfog_kaggle_defog.zarr

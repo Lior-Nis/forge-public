@@ -1,0 +1,6 @@
+_target_: model.losses.SoftFBetaLoss
+beta: 0.5              # <1 prioritizes precision, =1 is F1, >1 prioritizes recall
+num_classes: 2
+pos_class: 1
+smooth: 1.0e-6
+use_masked_loss: true

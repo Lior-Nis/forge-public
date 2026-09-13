@@ -1,0 +1,4 @@
+# @package _global_.train.loss
+
+_target_: model.losses.multitask_ssl.MultiTaskSSLLoss
+reduction: mean

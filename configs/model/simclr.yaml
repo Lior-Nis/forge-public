@@ -1,0 +1,17 @@
+# @package model
+
+defaults:
+  - preprocessors: null
+  - transform: wavelet
+  - backbone: fogformer
+  - signal_augmentor: default
+  - spectral_augmentor: default
+  - _self_
+
+img_size: ${global.img_size}
+
+head:
+  _target_: model.heads.SimCLRHead
+  encoder_dim: 512
+  projection_dim: 256
+  pool_patches: true

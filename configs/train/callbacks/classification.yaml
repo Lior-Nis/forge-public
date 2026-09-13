@@ -1,0 +1,35 @@
+
+checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  save_top_k: 3
+  monitor: "metrics/val_ap"
+  mode: "max"
+  dirpath: "./checkpoints/classification"
+  filename: 'e{epoch:02d}-ap{metrics/val_ap:.3f}'
+  save_last: true
+  every_n_epochs: 1
+
+checkpoint_dir_updater:
+  _target_: utils.wandb_callbacks.WandBCheckpointDirCallback
+
+early_stopping:
+  _target_: pytorch_lightning.callbacks.EarlyStopping
+  monitor: "metrics/val_ap"
+  patience: 10
+  mode: "max"
+  min_delta: 0.005
+  verbose: true
+
+lr_monitor:
+  _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  logging_interval: epoch
+
+registry:
+  _target_: utils.wandb_callbacks.WandBModelRegistryCallback
+  monitor: ${train.registry.monitor_metric}
+  mode: ${train.registry.monitor_mode}
+  register_on_train_end: ${train.registry.register_on_train_end}
+  register_on_improvement: ${train.registry.register_on_improvement}
+  register_interval: ${train.registry.register_interval}
+  min_improvement: ${train.registry.min_improvement}
+  artifact_name_template: ${train.registry.artifact_name_template}

@@ -1,0 +1,11 @@
+_target_: model.transforms.STFTTransform
+
+sample_rate: 100
+
+n_fft: 256
+win_length: 128
+hop_length: 16
+
+device: 'cuda'
+img_size: ${global.img_size}
+interpolate: false

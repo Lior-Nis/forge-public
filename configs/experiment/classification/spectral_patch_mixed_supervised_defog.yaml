@@ -1,0 +1,62 @@
+# @package _global_
+#
+# Mixed-protocol supervised baseline for defog evaluation.
+# SpectralPatchEncoder trained from scratch on defog + tdcsfog labeled data,
+# evaluated on defog-only fogstrat test patients.
+#
+# Purpose: Fair comparison against SSL approaches (spectral_patch_mae_finetune_defog,
+# spectral_patch_jepa_finetune_defog) which use the same architecture and test set.
+# Uses kfold_mixed_fogstrat splits: same defog test/val as fogstrat, but train
+# includes all 63 tdcsfog patients alongside defog train patients.
+
+defaults:
+  - /data/hierarchical_norm@data.hierarchical_norm: cross_protocol
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /data/paths: kaggle_pure_valid_no_notype_longcontext
+  - override /data/splits: kaggle_labeled/defog_only
+  - override /model/signal_augmentor: default
+  - override /model/preprocessors: hierarchical_norm_pure
+  - override /model/head: gru_binary_classification_heavy
+  - override /train/optimizer: adamw
+  - override /train/scheduler: cosine
+  - override /train/loss: focal_binary_ce
+  - override /train/callbacks: classification
+  - override /train/registry: default
+  - override /train/trainer: fog_trainer_no_limits
+  - override /train/logger: classification
+  - override /data/dataset: binary_dataset
+  - override /data/dataloader: classification_loader
+  - _self_
+
+global:
+  experiment_name: spectral_patch_mixed_supervised_defog
+  seed: 42
+
+model:
+  img_size: ${global.img_size}
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  backbone:
+    dropout: 0.1
+  head:
+    input_seq_len: 20
+    dropout: 0.3
+
+train:
+  optimizer:
+    lr: 1e-4
+
+  scheduler:
+    T_max: 50
+
+  trainer:
+    max_epochs: 50

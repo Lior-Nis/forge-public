@@ -1,0 +1,13 @@
+# @package model.head
+
+_target_: model.heads.RNNHead
+input_dim: 512
+rnn_type: 'GRU'
+rnn_layers: 1
+rnn_hidden_mult: 4
+num_classes: 4
+dropout: 0.2
+sequence_output: true
+bidirectional: true
+input_seq_len: 20
+target_seq_len: 200

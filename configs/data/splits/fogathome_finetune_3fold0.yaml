@@ -1,0 +1,18 @@
+# FogAtHome participant-level CV fold 0 (for the Fig 12 fine-tuning-data-size curve).
+# 12 FogAtHome patients split: 4 held-out test, 1 val, 7 fine-tune train.
+# Folds balanced by per-patient minutes (range 1.6-10.3 min; total ~61 min MC).
+train:
+  - "a00001"
+  - "a00004"
+  - "a00006"
+  - "a00009"
+  - "a00011"
+  - "a00012"
+  - "a00014"
+val:
+  - "a00013"
+test:
+  - "a00010"
+  - "a00008"
+  - "a00007"
+  - "a00002"

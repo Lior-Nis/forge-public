@@ -1,0 +1,53 @@
+# @package _global_
+#
+# SpectralPatchEncoder + 2D patch masking MAE pretraining.
+#
+# Uses asymmetric 2D Conv2d patch embedding (freq_patch=20, time_patch=50) to
+# encode wavelet spectrograms [B, 3, 100, 1000] into 100 tokens without
+# frequency collapse. No interpolation needed.
+#
+# Key differences from spectral_mae_daily:
+#   - backbone: spectral_patch_encoder (vs fogformer which collapses freq)
+#   - No interpolation in wavelet transform (native 100 freq bins)
+#   - mask_mode: 2d_patch (both frequency and time dimension masking)
+#   - head uses 2D reconstruction (freq_patch=20 per token, full 100 freq bins across 5 rows)
+
+defaults:
+  - override /model: mae
+  - override /train: mae
+  - override /data: mae
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  mask_mode: "2d_patch"
+  mask_ratio: 0.5
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  head:
+    freq_bins: 20       # = freq_patch (each token covers 20 freq bins)
+    freq_patch: 20      # enables 2D reconstruction mode in MAEDecoderHead
+    patch_size: 50      # = time_patch
+    encoder_embed_dim: 512
+    max_patches: 256    # supports 5×20=100 tokens (well within limit)
+
+data:
+  dataloader:
+    batch_size: 320
+
+train:
+  registry:
+    artifact_name_template: "mae-spectralpatch-wavelet-longcontext-epoch{epoch}"
+
+global:
+  experiment_name: "spectral_patch_mae_daily"

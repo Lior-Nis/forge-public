@@ -1,0 +1,13 @@
+# @package _global_.model.backbone
+
+_target_: model.backbones.SpectralPatchEncoder
+freq_patch: 20          # divides 100 freq bins → 5 frequency tokens
+time_patch: 50          # divides 1000 timesteps → 20 time tokens  (5×20=100 total)
+patch_size: 50          # alias for time_patch — read by logging manager and MAE pipeline
+embed_dim: 512
+num_heads: 8
+vit_depth: 4
+dropout: 0.1
+use_alibi: true
+input_channels: 3
+output_dim: 512

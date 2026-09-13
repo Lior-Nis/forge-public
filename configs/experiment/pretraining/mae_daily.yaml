@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - override /model: mae
+  - override /train: mae
+  - override /data: mae
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "mae-fogformer-wavelet-epoch{epoch}"

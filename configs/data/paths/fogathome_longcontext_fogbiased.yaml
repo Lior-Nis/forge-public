@@ -1,0 +1,9 @@
+# Paths config for fog-biased longcontext (1000-timestep) FogAtHome zarr.
+# Matches the MC zarr naming convention (includes fogstride in filename).
+
+defaults:
+  - base
+  - _self_
+
+input_dir: ${.raw_root}/fogathome
+dataset_path: len1000_stride200_fogstride100_fogathome.zarr

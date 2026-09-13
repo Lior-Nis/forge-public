@@ -1,0 +1,8 @@
+_target_: model.losses.BCEFocalLoss
+gamma: 2.0
+alpha: [0.25, 2.0]
+num_classes: 2
+device: "cuda"
+weighted: false
+use_masked_loss: true
+reduction: "none"

@@ -1,0 +1,64 @@
+# @package _global_
+#
+# Finetuning on defog using SpectralPatchEncoder backbone pretrained with LeJEPA.
+# Identical structure to spectral_patch_jepa_finetune_defog.yaml — only the
+# checkpoint path and experiment name differ. Part of the #024 fair SSL comparison.
+
+defaults:
+  - /data/hierarchical_norm@data.hierarchical_norm: cross_protocol
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /data/paths: kaggle_defog_pure_valid_longcontext
+  - override /data/splits: kaggle_labeled/defog_only
+  - override /model/signal_augmentor: default
+  - override /model/preprocessors: hierarchical_norm_pure
+  - override /model/head: gru_binary_classification_heavy
+  - override /train/optimizer: adamw
+  - override /train/scheduler: cosine
+  - override /train/loss: focal_binary_ce
+  - override /train/callbacks: classification
+  - override /train/registry: default
+  - override /train/trainer: fog_trainer_no_limits
+  - override /train/logger: classification
+  - override /data/dataset: binary_dataset
+  - override /data/dataloader: classification_loader
+  - _self_
+
+global:
+  experiment_name: spectral_patch_lejepa_finetune_defog
+  seed: 42
+
+model:
+  img_size: ${global.img_size}
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  backbone:
+    dropout: 0.0
+  head:
+    input_seq_len: 20
+    dropout: 0.3
+
+train:
+  weights:
+    load_from: null
+    load_strategy: backbone_only
+    freeze_backbone: true
+    unfreeze_schedule:
+      enabled: false
+
+  optimizer:
+    lr: 1e-3
+
+  scheduler:
+    T_max: 30
+
+  trainer:
+    max_epochs: 30

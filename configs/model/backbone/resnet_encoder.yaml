@@ -1,0 +1,9 @@
+# @package model.backbone
+
+_target_: model.backbones.ResNetEncoder
+input_channels: 3
+resnet_model: 'resnext50_32x4d'
+pretrained: false
+patch_size: 16          # must match stride-16 (layer3) for proper token alignment
+embed_dim: 1024         # layer3 output channels for resnext50_32x4d
+output_dim: 1024        # required by Pydantic BaseModelConfig

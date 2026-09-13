@@ -1,0 +1,12 @@
+# @package model
+
+defaults:
+  - preprocessors: hierarchical_norm_pure
+  - signal_augmentor: default
+  - transform: wavelet
+  - spectral_augmentor: null
+  - backbone: fogformer
+  - head: gru_binary_classification
+  - _self_
+
+img_size: ${global.img_size}

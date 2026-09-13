@@ -1,0 +1,7 @@
+defaults:
+  - paths: kaggle_daily
+  - process: kaggle_daily
+  - dataset: simclr_dataset
+  - dataloader: pretrain_loader
+  - splits: kaggle_daily/default
+  - _self_

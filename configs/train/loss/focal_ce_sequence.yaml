@@ -1,0 +1,5 @@
+# @package train.loss
+_target_: model.losses.SegmentationLoss
+class_weights: [1.0, 5.0, 3.0, 5.0]
+focal_gamma: 2.0
+label_smoothing: 0.1

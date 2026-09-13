@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - override /model: multitask_ssl
+  - override /train: multitask_ssl
+  - override /data: mae
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "multitask-ssl-epoch{epoch}"

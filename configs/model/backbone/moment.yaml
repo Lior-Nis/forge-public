@@ -1,0 +1,6 @@
+# @package _global_.model.backbone
+
+_target_: model.backbones.MOMENTBackbone
+pretrained_model_name: "AutonLab/MOMENT-1-large"
+freeze: true
+output_dim: 1024

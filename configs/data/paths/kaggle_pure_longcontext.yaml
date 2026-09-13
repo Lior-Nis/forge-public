@@ -1,0 +1,12 @@
+
+defaults:
+  - base
+  - _self_
+
+data_root: ${oc.env:DATA_ROOT, data}
+raw_root: ${.data_root}/raw
+processed_root: ${.data_root}/processed
+cache_root: ${.data_root}/caches
+processed_dir: ${.processed_root}
+input_dir: ${.raw_root}/kaggle_labeled
+dataset_path: len${..process.lengths.block_len}_stride${..process.lengths.stride_len}_kaggle_longcontext.zarr

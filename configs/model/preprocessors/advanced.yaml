@@ -1,0 +1,26 @@
+
+_target_: model.preprocessors.SignalPreprocessor
+preprocessors:
+  - _target_: model.preprocessors.DetrendPreprocessor
+    method: polynomial
+    poly_order: 2
+
+  - _target_: model.preprocessors.BaselineCorrectPreprocessor
+    method: highpass
+    cutoff_freq: 0.1
+    sample_rate: 100
+
+  - _target_: model.preprocessors.SmoothingPreprocessor
+    method: gaussian
+    kernel_size: 5
+    sigma: 1.0
+
+  - _target_: model.preprocessors.BandpassFilterPreprocessor
+    low_freq: 0.3
+    high_freq: 15.0
+    order: 6
+    sample_rate: 100
+
+  - _target_: model.preprocessors.NormalizePreprocessor
+    method: robust
+    per_channel: true

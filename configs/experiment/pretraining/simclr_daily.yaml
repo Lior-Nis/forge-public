@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - override /model: simclr
+  - override /train: simclr
+  - override /data: simclr_daily
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "simclr-fogformer-wavelet-epoch{epoch}"

@@ -1,0 +1,15 @@
+_target_: model.losses.JointLoss
+losses:
+  - target: model.losses.SmoothAPLoss
+    weight: 0.7
+    temperature: 0.01
+    num_classes: 2
+    pos_class: 1
+    use_masked_loss: true
+  - target: model.losses.CEFocalLoss
+    weight: 0.3
+    gamma: 2.0
+    alpha: [0.4, 1.2]
+    num_classes: 2
+    reduction: "none"
+    use_masked_loss: true

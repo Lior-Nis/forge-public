@@ -1,0 +1,81 @@
+# @package _global_
+#
+# Per-timestep FOG segmentation using exp025 backbone (500-len, medcontext).
+# Tests the Prisma hypothesis: train on pure patches only, per-timestep output
+# via sliding window inference with 10× overlap (stride=50 on 500-len zarr).
+#
+# Differences vs spectral_patch_mae_segmentation_defog (1000-len):
+#   - block_len: 500 instead of 1000
+#   - time_patch: 50 → 10 temporal tokens (same resolution: 500ms/token)
+#   - target_seq_len: 500
+#   - data/paths: kaggle_defog_pure_valid_medcontext (500-len pure+valid zarr)
+#   - backbone: loads exp025 checkpoint (eepoch=47)
+
+defaults:
+  - /data/hierarchical_norm@data.hierarchical_norm: cross_protocol
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_medcontext
+  - override /data/paths: kaggle_defog_pure_valid_medcontext
+  - override /data/splits: kaggle_labeled/defog_only
+  - override /model/signal_augmentor: default
+  - override /model/preprocessors: hierarchical_norm_pure
+  - override /model/head: gru_binary_segmentation_heavy
+  - override /train/optimizer: adamw
+  - override /train/scheduler: cosine
+  - override /train/loss: focal_binary_ce
+  - override /train/callbacks: classification
+  - override /train/registry: default
+  - override /train/trainer: fog_trainer_no_limits
+  - override /train/logger: classification
+  - override /data/dataset: binary_dataset
+  - override /data/dataloader: classification_loader
+  - _self_
+
+global:
+  experiment_name: spectral_patch_mae_segmentation_medcontext_defog
+  seed: 42
+
+model:
+  img_size: ${global.img_size}
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  backbone:
+    time_patch: 50
+    patch_size: 50
+    freq_patch: 20
+    dropout: 0.0
+  head:
+    input_seq_len: 10     # 500 / time_patch=50 = 10 temporal tokens
+    target_seq_len: 500   # upsample back to block_len timesteps
+    dropout: 0.3
+
+train:
+  pipeline_type: segmentation
+
+  weights:
+    load_from: null       # set via CLI
+    load_strategy: backbone_only
+    freeze_backbone: true
+    unfreeze_schedule:
+      enabled: false
+
+  optimizer:
+    lr: 1e-3
+
+  scheduler:
+    T_max: 30
+
+  trainer:
+    max_epochs: 30
+
+data:
+  dataloader:
+    batch_size: 256

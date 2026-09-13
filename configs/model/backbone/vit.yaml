@@ -1,0 +1,21 @@
+# @package model.backbone
+_target_: model.backbones.ViT
+input_channels: 3
+img_size: ${global.img_size}
+patch_size: 16
+embed_dim: 512
+num_heads: 16
+mlp_ratio: 4.0
+qkv_bias: true
+depth: 6
+dropout: 0.3
+norm_layer: 'nn.LayerNorm'
+global_pool: 'avg'
+pretrained: false
+pretrained_model: 'vit_large_patch16_384'
+use_group_norm: true
+pre_norm: true
+layer_scale_init: 1.0e-5
+layer_scale_depth: 1.2
+use_alibi: true
+custom_pos_embed: true

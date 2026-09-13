@@ -1,0 +1,11 @@
+_target_: model.transforms.GramianAngularFieldTransform
+
+method: 'GASF'
+img_size: ${global.img_size}
+interpolate: true
+norm_method: 'minmax'
+norm_range: [-0.95, 0.95]
+use_segmentation: true
+segment_size: 50
+segment_step: 25
+use_polar_encoding: true

@@ -1,0 +1,3 @@
+
+_target_: managers.task_manager.TaskManager
+task_type: jepa

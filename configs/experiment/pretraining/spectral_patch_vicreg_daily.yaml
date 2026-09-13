@@ -1,0 +1,46 @@
+# @package _global_
+#
+# VICReg pretraining with SpectralPatchEncoder on daily-living data.
+#
+# VICReg addresses SimCLR's collapse failure on bandlimited accelerometer data.
+# The variance + covariance terms structurally prevent low-rank collapse without
+# requiring hard negative pairs. Uses identical hyperparameters to Exp #023.
+#
+# No pipeline changes — pipeline/simclr.py already produces (z1, z2) and calls
+# self.loss(z1, z2). Only the loss is swapped (simclr → vicreg).
+
+defaults:
+  - override /model: simclr
+  - override /train: simclr
+  - override /train/loss: vicreg
+  - override /data: simclr_daily
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+
+data:
+  dataloader:
+    batch_size: 320
+
+train:
+  registry:
+    artifact_name_template: "vicreg-spectralpatch-wavelet-epoch{epoch}"
+  callbacks:
+    checkpoint:
+      dirpath: "./checkpoints/vicreg/vicreg_daily"
+
+global:
+  experiment_name: "spectral_patch_vicreg_daily"

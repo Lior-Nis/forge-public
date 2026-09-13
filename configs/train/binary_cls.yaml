@@ -1,0 +1,20 @@
+defaults:
+  - optimizer: adamw
+  - scheduler: one_clr
+  - loss: simple_ce_masked
+  - callbacks: classification
+  - registry: default
+  - task_manager: classification
+  - trainer: fog_trainer
+  - logger: classification
+  - _self_
+
+pipeline_type: "classification"
+
+logging:
+  spectral_log_interval: 10
+  accumulation_intervals:
+    spectrals: 10
+    patches: 5
+    timestamps: 5
+  benchmark_session_ids: ["auto"]

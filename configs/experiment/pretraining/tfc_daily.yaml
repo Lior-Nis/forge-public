@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - override /model: tfc
+  - override /train: tfc
+  - override /data: tfc_longcontext
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "tfc-fogformer-wavelet-epoch{epoch}"

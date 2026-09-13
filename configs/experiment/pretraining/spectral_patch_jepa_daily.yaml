@@ -1,0 +1,46 @@
+# @package _global_
+#
+# JEPA pretraining with SpectralPatchEncoder on daily-living unlabeled data.
+# Predicts masked token representations in latent space (avoids trivial interpolation).
+# Matches spectral_patch_mae_daily.yaml setup for direct comparison.
+
+defaults:
+  - override /model: jepa
+  - override /train: jepa
+  - override /data: jepa
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  head:
+    encoder_embed_dim: 512
+    predictor_embed_dim: 256
+    predictor_depth: 2
+    num_heads: 8
+    max_patches: 256
+
+data:
+  dataloader:
+    batch_size: 320
+
+train:
+  registry:
+    artifact_name_template: "jepa-spectralpatch-wavelet-epoch{epoch}"
+  callbacks:
+    checkpoint:
+      dirpath: "./checkpoints/jepa/jepa_daily"
+
+global:
+  experiment_name: "spectral_patch_jepa_daily"

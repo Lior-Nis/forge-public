@@ -1,0 +1,16 @@
+
+_target_: model.preprocessors.SignalPreprocessor
+preprocessors:
+  - _target_: model.preprocessors.HighpassFilterPreprocessor
+    cutoff_freq: 0.5
+    order: 4
+    sample_rate: ${data.process.sampling_rate}
+
+  - _target_: model.preprocessors.LowpassFilterPreprocessor
+    cutoff_freq: 10.0
+    order: 4
+    sample_rate: ${data.process.sampling_rate}
+
+  - _target_: model.preprocessors.NormalizePreprocessor
+    method: zscore
+    per_channel: true

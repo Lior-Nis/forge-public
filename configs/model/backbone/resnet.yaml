@@ -1,0 +1,7 @@
+_target_: model.backbones.ResNet
+input_channels: 3
+resnet_model: 'resnext50_32x4d'
+pretrained: false
+global_pool: 'avg'
+embed_dim: 2048  # resnext50_32x4d feature dim; used by head configs via ${model.backbone.embed_dim}
+output_dim: 2048  # required by Pydantic BaseModelConfig schema

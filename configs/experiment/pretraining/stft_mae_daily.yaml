@@ -1,0 +1,25 @@
+# @package _global_
+
+defaults:
+  - override /model: mae
+  - override /train: mae
+  - override /data: mae
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "mae-fogformer-stft-epoch{epoch}"
+
+model:
+  mask_mode: "temporal"
+  transform:
+    _target_: model.transforms.STFTTransform
+    sample_rate: 100
+    n_fft: 128
+    win_length: 32
+    hop_length: 1
+    device: 'cuda'
+    img_size: ${global.img_size}
+    interpolate: false
+  head:
+    freq_bins: 65

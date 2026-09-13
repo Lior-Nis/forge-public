@@ -1,0 +1,10 @@
+
+defaults:
+  - preprocessors: minimal
+  - signal_augmentor: default
+  - transform: wavelet
+  - backbone: fogformer
+  - head: gru_sequence_binary
+  - _self_
+
+_target_: model.fog_model.FOGModel

@@ -1,0 +1,7 @@
+_target_: pytorch_lightning.loggers.WandbLogger
+project: "fog-pretraining"
+save_dir: "./logs"
+log_model: True
+mode: "online"
+settings:
+  _save_code: True

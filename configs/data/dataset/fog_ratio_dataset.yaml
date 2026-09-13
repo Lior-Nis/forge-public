@@ -1,0 +1,6 @@
+defaults:
+  - base
+  - _self_
+
+_target_: data.dataset.classification.FOGClassificationDataset
+classification_strategy: "fog_ratio"

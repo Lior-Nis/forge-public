@@ -1,0 +1,10 @@
+_target_: model.transforms.QTransform
+
+sample_rate: 100
+f_min: 0.5
+f_max: 10.0
+bins_per_octave: 24
+filter_scale: 1.0
+hop_length: 32
+img_size: 224
+interpolate: false

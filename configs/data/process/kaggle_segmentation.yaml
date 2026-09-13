@@ -1,0 +1,6 @@
+
+defaults:
+  - kaggle
+  - _self_
+
+pure_patches_only: false

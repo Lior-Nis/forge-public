@@ -1,0 +1,3 @@
+# @package train.loss
+_target_: torch.nn.CrossEntropyLoss
+reduction: mean

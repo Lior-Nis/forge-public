@@ -1,0 +1,6 @@
+spectral_log_interval: 10
+reconstruction_interval: 5
+accumulation_intervals:
+  spectrals: 10
+  patches: 10
+  timestamps: 5

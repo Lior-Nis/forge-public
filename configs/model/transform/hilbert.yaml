@@ -1,0 +1,15 @@
+_target_: model.transforms.HilbertTransform
+
+sample_rate: 100
+img_size: 224
+interpolate: true
+compute_envelope: true
+compute_phase: true
+compute_frequency: true
+use_filter_bank: true
+freq_bands:
+  - [0.5, 3.0]
+  - [3.0, 8.0]
+  - [8.0, 15.0]
+window_size: 128
+hop_size: 32

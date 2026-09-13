@@ -1,0 +1,13 @@
+# @package model.backbone
+
+_target_: model.backbones.FogFormer
+patch_size: 10
+embed_dim: 512
+output_dim: 512
+num_heads: 16
+vit_depth: 6
+dropout: 0.3
+use_alibi: true
+pre_norm: false
+activation: 'GELU'
+input_channels: 3

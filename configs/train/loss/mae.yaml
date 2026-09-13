@@ -1,0 +1,6 @@
+# @package _global_.train.loss
+
+_target_: model.losses.MAELoss
+loss_type: 'mse'
+use_patches: false
+norm_pix_loss: false

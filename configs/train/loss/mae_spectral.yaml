@@ -1,0 +1,13 @@
+# @package _global_.train.loss
+
+_target_: model.losses.JointLoss
+losses:
+  - target: model.losses.MAELoss
+    weight: 0.5
+    loss_type: 'mse'
+    use_patches: false
+    norm_pix_loss: false
+  - target: model.losses.SpectralMAELoss
+    weight: 0.5
+    loss_type: 'mse'
+    log_scale: true

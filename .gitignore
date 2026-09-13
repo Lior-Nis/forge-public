@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Environments / secrets
+.venv/
+venv/
+.env
+.env.*
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Data (download from Hugging Face; never commit)
+/data/raw
+/data/raw/
+/data/processed/
+/data/caches/
+
+# Model weights and run outputs (released on Hugging Face)
+/checkpoints/
+/release/forge-fog/
+/release/staging/
+*.ckpt
+*.pt
+*.pth
+/logs/
+/outputs/
+/multirun/
+/lightning_logs/
+/wandb/
+/artifacts/
+*.log
+
+# Author-private research material read by the [author-only] scripts
+/research/
+
+# Agent tooling: only the two reproducibility skills are part of the release
+/.claude/*
+!/.claude/skills/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

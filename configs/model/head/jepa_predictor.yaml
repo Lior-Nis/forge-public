@@ -1,0 +1,9 @@
+# @package model.head
+
+_target_: model.heads.JEPAPredictorHead
+encoder_embed_dim: 512
+predictor_embed_dim: 256
+predictor_depth: 2
+num_heads: 8
+max_patches: 256
+dropout: 0.0

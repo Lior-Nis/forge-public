@@ -1,0 +1,4 @@
+# @package _global_.train.task_manager
+
+_target_: managers.task_manager.TaskManager
+task_type: "patient_contrastive"

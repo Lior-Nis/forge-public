@@ -1,0 +1,18 @@
+# @config config_schema
+defaults:
+  - _self_
+  - data: kaggle_labeled
+  - model: binary_cls
+  - train: binary_cls
+  - experiment: null
+  - override hydra/launcher: basic
+  - override hydra/output: default
+
+global:
+  seed: 42
+  img_size: 224
+  device: cuda
+  precision: 16-mixed
+  debug: false
+  experiment_name: fog_detection
+  run_name: null

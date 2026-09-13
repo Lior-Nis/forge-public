@@ -1,0 +1,23 @@
+defaults:
+  - optimizer: adamw
+  - scheduler: cosine
+  - loss: patient_contrastive
+  - callbacks: pretraining
+  - logger: pretraining
+  - registry: default
+  - task_manager: patient_contrastive
+  - trainer: fog_trainer
+  - _self_
+
+pipeline_type: "patient_contrastive"
+
+callbacks:
+  checkpoint:
+    dirpath: "./checkpoints/patient_contrastive"
+
+registry:
+  monitor_metric: "losses/val_loss"
+  monitor_mode: "min"
+
+optimizer:
+  lr: 1.5e-4

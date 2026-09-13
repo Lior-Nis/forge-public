@@ -1,0 +1,10 @@
+
+data_root: ${oc.env:DATA_ROOT, data}
+raw_root: ${.data_root}/raw
+processed_root: ${.data_root}/processed
+cache_root: ${.data_root}/caches
+
+input_dir: ${.raw_root}/kaggle_labeled
+processed_dir: ${.processed_root}
+
+dataset_path: len${..process.lengths.block_len}_stride${..process.lengths.stride_len}_kaggle.zarr

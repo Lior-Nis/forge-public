@@ -1,0 +1,45 @@
+# @package _global_
+#
+# iBOT pretraining with SpectralPatchEncoder on daily-living unlabeled data.
+# Student sees masked input; EMA teacher sees full input.
+# Loss = (1 - cosine_similarity) at masked token positions.
+# Matches spectral_patch_jepa_daily.yaml setup for direct fair comparison.
+
+defaults:
+  - override /model: ibot
+  - override /train: ibot
+  - override /data: jepa
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  mask_ratio: 0.75
+  mask_mode: "temporal"
+  ema_decay: 0.996
+  ema_decay_end: 0.9999
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+
+data:
+  dataloader:
+    batch_size: 320
+
+train:
+  registry:
+    artifact_name_template: "ibot-spectralpatch-wavelet-epoch{epoch}"
+  callbacks:
+    checkpoint:
+      dirpath: "./checkpoints/ibot/ibot_daily"
+
+global:
+  experiment_name: "spectral_patch_ibot_daily"

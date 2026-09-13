@@ -1,0 +1,6 @@
+
+defaults:
+  - base
+  - _self_
+
+dataset_path: len${..process.lengths.block_len}_stride${..process.lengths.stride_len}_kaggle_defog.zarr

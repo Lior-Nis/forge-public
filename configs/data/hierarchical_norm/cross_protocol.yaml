@@ -1,0 +1,5 @@
+
+enabled: true
+protocol_harmonization: true
+patient_normalization: true
+session_normalization: true

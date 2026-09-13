@@ -1,0 +1,8 @@
+
+defaults:
+  - base
+  - _self_
+
+# Physical DeFOG zarr + validity filter (replaces the gitignored defog_valid_shortcontext view).
+dataset_path: len200_stride20_fogstride10_anyfog_kaggle_defog.zarr
+metadata_query: "validity == 1.0"

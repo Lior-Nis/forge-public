@@ -1,0 +1,25 @@
+
+_target_: model.preprocessors.SignalPreprocessor
+preprocessors:
+  - _target_: model.preprocessors.HighpassFilterPreprocessor
+    cutoff_freq: 0.5
+    order: 4
+    sample_rate: 100
+
+  - _target_: model.preprocessors.LowpassFilterPreprocessor
+    cutoff_freq: 10.0
+    order: 4
+    sample_rate: 100
+
+  - _target_: model.preprocessors.PatientNormalizationPreprocessor
+    num_features: 3
+    method: zscore
+    eps: 1e-8
+    # stats are injected at train start from the training-fold (no-leakage); no stats_path needed.
+
+  - _target_: model.preprocessors.SessionNormalizationPreprocessor
+    num_features: 3
+    method: revin
+    eps: 1e-5
+    affine: true
+    subtract_last: false

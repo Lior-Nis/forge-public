@@ -1,0 +1,3 @@
+# @package _global_.train.loss
+
+_target_: model.losses.IBOTLoss

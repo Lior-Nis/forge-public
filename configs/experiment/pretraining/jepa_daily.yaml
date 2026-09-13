@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - override /model: jepa
+  - override /train: jepa
+  - override /data: jepa
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "jepa-fogformer-wavelet-epoch{epoch}"

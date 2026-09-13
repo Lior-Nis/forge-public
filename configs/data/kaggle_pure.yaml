@@ -1,0 +1,8 @@
+
+defaults:
+  - dataloader: classification_loader
+  - dataset: binary_dataset
+  - paths: kaggle_pure
+  - process: kaggle
+  - splits: kaggle_labeled/dedup
+  - _self_

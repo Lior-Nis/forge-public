@@ -1,0 +1,52 @@
+_target_: model.augmentors.SignalAugmenter
+augmentors:
+
+  # Identity-preserving transforms (keep signal structure)
+  - _target_: model.augmentors.LRFlipAugmentor
+    augmentor_config:
+      probability: 0.5
+
+  - _target_: model.augmentors.DeviceOrientationAugmentor
+    augmentor_config:
+      probability: 0.5
+      rotation_angle_range: [-30, 30]
+
+  - _target_: model.augmentors.PhaseShiftAugmentor
+    augmentor_config:
+      phase_shift_probability: 0.5
+      phase_shift_range_low_high: [-15, 16]
+      phase_shift_channel_probability: 0.6
+
+  # Mild temporal distortions
+  - _target_: model.augmentors.TimeWarpingAugmentor
+    augmentor_config:
+      probability: 0.5
+      warp_factor_range: [0.9, 1.1]
+
+  - _target_: model.augmentors.ResizeAugmentor
+    augmentor_config:
+      probability: 0.4
+      stretch_std: 0.3
+
+  # Noise (preserves structure, adds diversity)
+  - _target_: model.augmentors.NoiseAugmentor
+    augmentor_config:
+      noise_probability: 0.5
+      noise_level: 0.08
+      impulse_probability: 0.2
+      impulse_mask_probability: 0.01
+      impulse_level: 0.2
+
+  # Domain-specific (mild, additive only)
+  - _target_: model.augmentors.GaitAsymmetryAugmentor
+    augmentor_config:
+      probability: 0.3
+      asymmetry_freq_range: [0.5, 2.0]
+      asymmetry_strength_range: [0.05, 0.15]
+
+  - _target_: model.augmentors.TremorAugmentor
+    augmentor_config:
+      probability: 0.3
+      tremor_freq_range: [4.0, 6.0]
+      tremor_amplitude_range: [0.05, 0.15]
+      tremor_duration_range: [0.2, 0.5]

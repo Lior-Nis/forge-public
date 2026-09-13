@@ -1,0 +1,10 @@
+
+defaults:
+  - dataset: binary_dataset
+  - dataloader: classification_loader
+  - paths: kaggle
+  - process: default
+  - splits: kaggle_labeled/dedup
+  - _self_
+
+hierarchical_norm: null

@@ -1,0 +1,23 @@
+# @package _global_
+# VICReg pretraining on daily (home-domain) unlabeled data.
+#
+# Addresses SimCLR's failure mode: low-rank collapse due to 3D-effective accelerometer data.
+# VICReg's variance + covariance terms structurally prevent collapse without hard negatives.
+#
+# Usage:
+#   python scripts/pretrain_simclr.py experiment=pretraining/vicreg_daily
+#   python scripts/pretrain_simclr.py experiment=pretraining/vicreg_daily train.trainer.max_epochs=50
+
+defaults:
+  - override /model: simclr
+  - override /train: simclr
+  - override /train/loss: vicreg
+  - override /data: simclr_daily
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "vicreg-fogformer-wavelet-epoch{epoch}"
+  callbacks:
+    checkpoint:
+      dirpath: "./checkpoints/vicreg"

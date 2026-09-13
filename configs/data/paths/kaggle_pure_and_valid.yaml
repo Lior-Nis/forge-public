@@ -1,0 +1,6 @@
+
+defaults:
+  - base
+  - _self_
+
+dataset_path: views/pure_and_valid.yaml

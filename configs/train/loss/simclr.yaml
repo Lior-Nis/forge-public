@@ -1,0 +1,5 @@
+# @package _global_.train.loss
+
+_target_: model.losses.contrastive.SimCLRLoss
+temperature: 0.1
+reduction: mean

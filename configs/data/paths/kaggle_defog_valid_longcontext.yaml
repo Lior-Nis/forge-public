@@ -1,0 +1,8 @@
+
+defaults:
+  - base
+  - _self_
+
+# Physical DeFOG zarr + validity filter (replaces the gitignored defog_valid_longcontext view).
+dataset_path: len1000_stride200_kaggle.zarr
+metadata_query: "validity == 1.0"

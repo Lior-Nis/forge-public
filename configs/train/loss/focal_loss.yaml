@@ -1,0 +1,5 @@
+
+_target_: model.losses.BCEFocalLoss
+gamma: 2.0
+alpha: [0.25, 2.0]
+reduction: mean

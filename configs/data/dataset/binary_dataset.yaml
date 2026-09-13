@@ -1,0 +1,6 @@
+defaults:
+  - base
+  - _self_
+
+_target_: data.fog_classification_dataset.FOGClassificationDataset
+classification_strategy: "binary_any_fog"

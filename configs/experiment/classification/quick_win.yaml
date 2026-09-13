@@ -1,0 +1,44 @@
+# @package _global_
+
+defaults:
+  - /data/hierarchical_norm@data.hierarchical_norm: cross_protocol
+  - override /model/preprocessors@model.preprocessors: hierarchical_norm_pure
+  - override /model/signal_augmentor@model.signal_augmentor: default
+  - override /model/transform@model.transform: raw
+  - override /model/backbone@model.backbone: fogformer_no_dropout
+  - override /model/head@model.head: gru_binary_classification_light
+  - override /train/optimizer@train.optimizer: adamw
+  - override /train/scheduler@train.scheduler: cosine
+  - override /train/loss@train.loss: simple_ce_masked
+  - override /train/callbacks@train.callbacks: classification
+  - override /train/trainer@train.trainer: fog_trainer
+  - override /train/logger@train.logger: classification
+  - override /data/dataset@data.dataset: binary_dataset
+  - override /data/dataloader@data.dataloader: classification_loader
+  - override /data/paths@data.paths: kaggle_pure
+  - override /data/process@data.process: kaggle
+  - override /data/splits@data.splits: kaggle_labeled/dedup
+  - _self_
+
+global:
+  experiment_name: quick_win
+  seed: 42
+  debug: false
+
+model:
+  img_size: ${global.img_size}
+  head:
+    dropout: 0.3
+
+train:
+  trainer:
+    max_epochs: 20
+    limit_train_batches: 50
+
+data:
+  dataloader:
+    batch_size: 512
+    num_workers: 4
+    balance_weights:
+      balance_protocols: true
+      balance_patients: true

@@ -1,0 +1,23 @@
+# Unlabeled dataset processing for the medcontext (500-timestep) experiment.
+# Pretraining data has no FOG labels, so fog_stride_len and any_fog_labeling are unused.
+# Only change vs kaggle_longcontext: block_len 1000 → 500.
+
+defaults:
+  - _self_
+
+sampling_rate: 100
+
+lengths:
+  block_len: 500
+  stride_len: 200
+
+any_fog_labeling: false
+data_type: unlabeled
+
+zarr_config:
+  chunk_size: 256
+  compressor: lz4
+  compression_level: 1
+
+processor:
+  _target_: data.process.processor.unlabeled.UnlabeledDataProcessor

@@ -1,0 +1,20 @@
+defaults:
+  - optimizer: adamw
+  - scheduler: cosine
+  - loss: focal_multiclass_ce
+  - callbacks: classification
+  - registry: default
+  - task_manager: classification
+  - trainer: fog_trainer
+  - logger: segmentation
+  - _self_
+
+pipeline_type: "classification"
+
+logging:
+  spectral_log_interval: 0
+  accumulation_intervals:
+    spectrals: 0
+    patches: 10
+    benchmark: 0
+  benchmark_session_ids: ["auto", "auto"]

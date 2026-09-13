@@ -1,0 +1,94 @@
+_target_: model.augmentors.SignalAugmenter
+augmentors:
+
+  - _target_: model.augmentors.LRFlipAugmentor
+    augmentor_config:
+      probability: 0.6
+
+  - _target_: model.augmentors.ResizeAugmentor
+    augmentor_config:
+      probability: 0.6
+      stretch_std: 0.8
+
+  - _target_: model.augmentors.CropAugmentor
+    augmentor_config:
+      probability: 0.7
+      max_crop_fraction: 0.8
+      min_fraction: 0.15
+
+  - _target_: model.augmentors.NoiseAugmentor
+    augmentor_config:
+      noise_probability: 0.6
+      noise_level: 0.1
+      impulse_probability: 0.3
+      impulse_mask_probability: 0.02
+      impulse_level: 0.3
+
+  - _target_: model.augmentors.ExciseAugmentor
+    augmentor_config:
+      probability: 0.25
+      max_excise_fraction: 0.4
+      min_gap_length: 50
+      max_gap_length: 200
+
+  - _target_: model.augmentors.TimeMaskingAugmentor
+    augmentor_config:
+      time_masking_probability: 0.6
+      time_masking_length_low_high: [10, 80]
+      channel_mask_probability: 0.7
+
+  - _target_: model.augmentors.TimeStretchAugmentor
+    augmentor_config:
+      time_wraping_probability: 0.7
+      time_wrapping_channel_probability: 0.6
+      strech_factor_base: 0.8
+      strech_factor_slope: 0.4
+
+  - _target_: model.augmentors.PhaseShiftAugmentor
+    augmentor_config:
+      phase_shift_probability: 0.6
+      phase_shift_range_low_high: [-15, 16]
+      phase_shift_channel_probability: 0.6
+
+  - _target_: model.augmentors.TimeWarpingAugmentor
+    augmentor_config:
+      probability: 0.6
+      warp_factor_range: [0.8, 1.2]
+
+  - _target_: model.augmentors.SignalCutMixAugmentor
+    augmentor_config:
+      probability: 0.3
+      segment_probability: 0.6
+      min_cutmix_fraction: 0.2
+      max_cutmix_fraction: 0.8
+
+  - _target_: model.augmentors.TremorAugmentor
+    augmentor_config:
+      probability: 0.4
+      tremor_freq_range: [4.0, 6.0]
+      tremor_amplitude_range: [0.1, 0.3]
+      tremor_duration_range: [0.3, 0.8]
+
+  - _target_: model.augmentors.BradykinesiaAugmentor
+    augmentor_config:
+      probability: 0.5
+      slowdown_range: [0.6, 0.9]
+      segment_fraction_range: [0.3, 0.7]
+
+  - _target_: model.augmentors.FoGSynthesisAugmentor
+    augmentor_config:
+      probability: 0.25
+      fog_duration_range: [1.0, 4.0]
+      fog_freq_range: [3.0, 8.0]
+      fog_amplitude_range: [0.2, 0.5]
+
+  - _target_: model.augmentors.GaitAsymmetryAugmentor
+    augmentor_config:
+      probability: 0.5
+      asymmetry_freq_range: [0.5, 2.0]
+      asymmetry_strength_range: [0.1, 0.3]
+
+  - _target_: model.augmentors.DeviceOrientationAugmentor
+    augmentor_config:
+      probability: 0.4
+      rotation_angle_range: [-30, 30]

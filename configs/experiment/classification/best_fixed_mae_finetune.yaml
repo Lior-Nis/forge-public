@@ -1,0 +1,69 @@
+# @package _global_
+#
+# MAE backbone finetuning variant of best_fixed.
+# Loads pretrained MAE backbone (backbone_only) and freezes it for linear probe.
+
+defaults:
+  - /data/hierarchical_norm@data.hierarchical_norm: cross_protocol
+  - override /model/signal_augmentor@model.signal_augmentor: default
+  - override /model/preprocessors@model.preprocessors: hierarchical_norm_pure
+  - override /model/transform@model.transform: raw
+  - override /model/backbone@model.backbone: fogformer
+  - override /model/head@model.head: gru_binary_classification_heavy
+  - override /train/optimizer@train.optimizer: adamw
+  - override /train/scheduler@train.scheduler: cosine
+  - override /train/loss@train.loss: focal_binary_ce
+  - override /train/callbacks@train.callbacks: finetune
+  - override /train/registry@train.registry: default
+  - override /train/trainer@train.trainer: fog_trainer_no_limits
+  - override /train/logger@train.logger: classification
+  - override /data/dataset@data.dataset: binary_dataset
+  - override /data/dataloader@data.dataloader: classification_loader
+  - override /data/paths@data.paths: kaggle_pure_and_valid
+  - override /data/process@data.process: kaggle
+  - override /data/splits@data.splits: kaggle_labeled/dedup
+  - _self_
+
+global:
+  experiment_name: best_fixed_mae_finetune
+  seed: 42
+
+model:
+  img_size: ${global.img_size}
+  backbone:
+    dropout: 0.3
+  head:
+    dropout: 0.3
+
+train:
+  weights:
+    load_from: checkpoints/mae/azure-sponge-59/last.ckpt
+    load_strategy: backbone_only
+    freeze_backbone: true
+    unfreeze_schedule:
+      enabled: false
+      unfreeze_at_epoch: 10
+  optimizer:
+    lr: 1e-3
+  scheduler:
+    T_max: 50
+  loss:
+    alpha: [0.4, 1.2]
+    gamma: 2.0
+  registry:
+    monitor_metric: "metrics/val_ap"
+    monitor_mode: "max"
+  trainer:
+    max_epochs: 30
+    limit_train_batches: null
+    gradient_clip_val: 1.0
+
+data:
+  dataloader:
+    batch_size: 1024
+    num_workers: 8
+    prefetch_factor: 4
+    balanced_sampling: true
+    balance_weights:
+      balance_protocols: true
+      balance_patients: true

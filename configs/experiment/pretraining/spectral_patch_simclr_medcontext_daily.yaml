@@ -1,0 +1,49 @@
+# @package _global_
+#
+# SimCLR contrastive pretraining at MEDIUM context (500 timesteps) on
+# daily-living data. Budget-matched companion to the 2D-MAE MC encoder.
+#
+# Identical to spectral_patch_simclr_daily EXCEPT the data is routed to the
+# medcontext (len500_stride200) daily zarr instead of longcontext (len1000).
+# Same depth-4 SpectralPatchEncoder, same wavelet transform. SimCLRHead
+# mean-pools the patch tokens ([B, 50, 512] at MC) -> [B, 512] -> proj [B, 256].
+#
+# Motivation: the LC ablation is FORGE's weakest context; this enables the
+# context-matched comparison at MC (the deployable headline context).
+
+defaults:
+  - override /model: simclr
+  - override /train: simclr
+  - override /data: simclr_daily
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_medcontext_daily
+  - override /data/paths: kaggle_daily_medcontext
+  - override /data/splits: kaggle_daily/medcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+
+data:
+  dataloader:
+    batch_size: 640         # MC uses ~half the memory of LC -> doubled from 320
+
+train:
+  registry:
+    artifact_name_template: "simclr-spectralpatch-wavelet-medcontext-epoch{epoch}"
+  callbacks:
+    checkpoint:
+      dirpath: "./checkpoints/simclr/simclr_medcontext_daily"
+
+global:
+  experiment_name: "spectral_patch_simclr_medcontext_daily"

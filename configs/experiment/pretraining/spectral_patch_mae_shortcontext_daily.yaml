@@ -1,0 +1,60 @@
+# @package _global_
+#
+# MAE 2D pretraining with 200-timestep patches (shortcontext experiment, exp026).
+# Changes vs medcontext (500-timestep):
+#   1. block_len 500 → 200 (2s patches), stride 200 → 40 (20% advance, same ratio as #023)
+#   2. time_patch 50 → 10: 200/10 = 20 temporal tokens (same as #023's 1000/50=20)
+#   3. batch_size 256 (100 patches/sample vs 50 for medcontext → 4× attention cost;
+#      with accumulate_grad_batches=4, effective batch=1024 ≈ #023's 1280)
+#   4. Total patches: ~5× more than #023 (stride=40 vs stride=200 on same data)
+
+defaults:
+  - override /model: mae
+  - override /train: mae
+  - override /data: mae
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_shortcontext_daily
+  - override /data/paths: kaggle_daily_shortcontext
+  - override /data/splits: kaggle_daily/shortcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  mask_mode: "2d_patch"
+  mask_ratio: 0.5
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  backbone:
+    time_patch: 10      # 200 / 10 = 20 temporal tokens
+    patch_size: 10      # alias for time_patch
+    freq_patch: 20      # 100 scales / 20 = 5 freq tokens (unchanged)
+  head:
+    freq_bins: 20       # = freq_patch
+    freq_patch: 20
+    patch_size: 10      # = time_patch; 200 / 10 = 20 time tokens
+    encoder_embed_dim: 512
+    max_patches: 256    # 5 freq × 20 time = 100 tokens — well within limit
+
+data:
+  dataloader:
+    batch_size: 256
+
+train:
+  trainer:
+    limit_val_batches: null
+  registry:
+    artifact_name_template: "mae-spectralpatch-wavelet-shortcontext-epoch{epoch}"
+  callbacks:
+    checkpoint:
+      dirpath: "./checkpoints/mae/mae_shortcontext_daily"
+
+global:
+  experiment_name: "spectral_patch_mae_shortcontext_daily"

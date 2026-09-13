@@ -1,0 +1,11 @@
+# @package _global_
+
+defaults:
+  - override /model: simclr
+  - override /train: patient_contrastive
+  - override /data: simclr_daily
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "patient-contrastive-epoch{epoch}"

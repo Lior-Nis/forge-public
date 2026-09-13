@@ -1,0 +1,5 @@
+_target_: model.transforms.PatchTransform
+
+patch_size: 14
+flatten_patches: true
+interpolate: false

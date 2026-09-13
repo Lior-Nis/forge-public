@@ -1,0 +1,20 @@
+
+_target_: model.augmentors.SignalAugmenter
+augmentors:
+
+  - _target_: model.augmentors.LRFlipAugmentor
+    augmentor_config:
+      probability: 0.5
+
+  - _target_: model.augmentors.ResizeAugmentor
+    augmentor_config:
+      probability: 0.8
+      stretch_std: 0.5
+
+  - _target_: model.augmentors.NoiseAugmentor
+    augmentor_config:
+      noise_probability: 0.5
+      noise_level: 0.05
+      impulse_probability: 0.2
+      impulse_mask_probability: 0.01
+      impulse_level: 0.2

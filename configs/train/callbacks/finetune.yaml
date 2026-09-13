@@ -1,0 +1,22 @@
+
+checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  save_top_k: 3
+  monitor: "metrics/val_ap"
+  mode: "max"
+  dirpath: "./checkpoints/finetune"
+  filename: 'checkpoint-{epoch:02d}-{metrics/val_ap:.3f}'
+  save_last: true
+  every_n_epochs: 1
+
+early_stopping:
+  _target_: pytorch_lightning.callbacks.EarlyStopping
+  monitor: "metrics/val_ap"
+  patience: 10
+  mode: "max"
+  min_delta: 0.005
+  verbose: true
+
+lr_monitor:
+  _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  logging_interval: epoch

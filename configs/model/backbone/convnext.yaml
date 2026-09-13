@@ -1,0 +1,6 @@
+_target_: model.backbones.ConvNeXt
+input_channels: 3
+model_name: 'convnext_small'
+pretrained: false
+feature_dim: 768
+global_pool: 'avg'

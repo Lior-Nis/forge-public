@@ -1,0 +1,23 @@
+defaults:
+  - optimizer: adamw
+  - scheduler: cosine
+  - loss: multitask_ssl
+  - callbacks: pretraining
+  - logger: pretraining
+  - registry: default
+  - task_manager: multitask_ssl
+  - trainer: fog_trainer
+  - _self_
+
+pipeline_type: "multitask_ssl"
+
+callbacks:
+  checkpoint:
+    dirpath: "./checkpoints/multitask_ssl"
+
+registry:
+  monitor_metric: "losses/val_loss"
+  monitor_mode: "min"
+
+optimizer:
+  lr: 1.5e-4

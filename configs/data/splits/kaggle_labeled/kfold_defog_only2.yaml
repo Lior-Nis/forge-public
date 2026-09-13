@@ -1,0 +1,50 @@
+# 5-fold CV (fold 2) stratified by fog_ratio
+# Dataset: data/processed/len1000_stride200_kaggle.zarr
+# Total patients: 36
+# Split: 22 train / 7 val / 7 test
+# Stratification: fog_ratio
+# Random seed: 42
+# Protocol distribution:
+#   train: defog: 22, notype: 0, tdcsfog: 0
+#   val: defog: 7, notype: 0, tdcsfog: 0
+#   test: defog: 7, notype: 0, tdcsfog: 0
+
+"train":
+- "109122"
+- "41edef"
+- "49f526"
+- "50ee1c"
+- "51dc47"
+- "5538f9"
+- "94fece"
+- "9faea7"
+- "a431bf"
+- "accced"
+- "b22513"
+- "b5c808"
+- "b7bd52"
+- "bf608b"
+- "c8bc1b"
+- "ce8b0b"
+- "d5a377"
+- "d79889"
+- "d9529b"
+- "e31e46"
+- "fc1e1b"
+- "fe5d84"
+"val":
+- "39f9c0"
+- "641c30"
+- "c0b71e"
+- "c25c22"
+- "d31197"
+- "ebd0ae"
+- "f90887"
+"test":
+- "1e6732"
+- "21e523"
+- "473568"
+- "8ad779"
+- "a7d8c0"
+- "b6a627"
+- "c72211"

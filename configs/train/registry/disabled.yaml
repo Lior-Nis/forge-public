@@ -1,0 +1,18 @@
+
+project: "fog"
+entity: null
+
+auto_register: false
+register_on_improvement: false
+register_on_train_end: false
+register_interval: null
+
+monitor_metric: "val_f1"
+monitor_mode: "max"
+min_improvement: 0.001
+
+artifact_name_template: null
+artifact_description_template: null
+
+preferred_aliases: []
+fallback_to_files: true

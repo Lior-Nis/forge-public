@@ -1,0 +1,10 @@
+# @package model
+
+defaults:
+  - preprocessors: minimal
+  - transform: raw
+  - backbone: fogformer
+  - signal_augmentor: null
+  - spectral_augmentor: null
+  - head: identity
+  - _self_

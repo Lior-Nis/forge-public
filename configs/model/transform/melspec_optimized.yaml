@@ -1,0 +1,27 @@
+_target_: model.transforms.MelSpectrogramTransform
+
+sample_rate: 100
+
+n_fft: 256
+win_length: 128
+hop_length: 16
+
+n_mels: 64
+f_min: 0.5
+f_max: 20.0
+
+mel_power: 2
+mel_pwr: 0.3
+mel_eps: 3e-6
+mel_win_mult: 1.5
+
+center: true
+norm: "slaney"
+mel_scale: "slaney"
+multiplier: 10
+amin: 1e-9
+db_multiplier: 1
+top_db: 60
+
+img_size: ${global.img_size}
+interpolate: false

@@ -1,0 +1,2 @@
+_target_: model.transforms.RawSignalTransform
+img_size: ${global.img_size}

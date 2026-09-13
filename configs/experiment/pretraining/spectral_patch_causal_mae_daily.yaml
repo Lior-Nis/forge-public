@@ -1,0 +1,58 @@
+# @package _global_
+#
+# Causal next-patch prediction pretraining with SpectralPatchEncoder.
+#
+# Key difference from spectral_patch_mae_daily (2d_patch random masking):
+# mask_mode: "causal" — for each sample a random split point K is drawn;
+# patches 0..K-1 are visible (past context), patches K..nW-1 are masked
+# (future to predict). The model learns to reconstruct future spectrogram
+# patches from past context, explicitly modelling temporal dynamics and
+# gait-state transitions (including FOG onset signatures).
+#
+# Motivation: MAE reconstructs masked patches from surrounding context —
+# it learns "what a patch looks like" but not "what comes next". Causal
+# prediction forces the model to learn the temporal flow of gait kinematics,
+# including the micro-kinematic transitions just before FOG onset.
+#
+# Architecture identical to spectral_patch_mae_daily so checkpoints are
+# directly comparable for downstream linear-probe evaluation.
+
+defaults:
+  - override /model: mae
+  - override /train: mae
+  - override /data: mae
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  mask_mode: "causal"
+  mask_ratio: 0.5
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  head:
+    freq_bins: 20
+    freq_patch: 20
+    patch_size: 50
+    encoder_embed_dim: 512
+    max_patches: 256
+
+data:
+  dataloader:
+    batch_size: 320
+
+train:
+  registry:
+    artifact_name_template: "mae-spectralpatch-wavelet-causal-epoch{epoch}"
+
+global:
+  experiment_name: "spectral_patch_causal_mae_daily"

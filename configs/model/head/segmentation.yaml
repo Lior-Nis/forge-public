@@ -1,0 +1,7 @@
+_target_: model.heads.SegmentationHead
+input_dim: 256
+input_seq_len: 32
+target_seq_len: 384
+num_classes: 4
+hidden_dim: 256
+dropout: 0.1

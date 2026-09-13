@@ -1,0 +1,26 @@
+# @package _global_
+
+defaults:
+  - override /model: mae
+  - override /train: mae
+  - override /data: mae
+  - _self_
+
+train:
+  registry:
+    artifact_name_template: "mae-fogformer-wavelet-spectral-epoch{epoch}"
+
+model:
+  mask_mode: "2d_patch"
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  head:
+    freq_bins: 100

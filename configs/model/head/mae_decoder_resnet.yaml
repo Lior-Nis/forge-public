@@ -1,0 +1,11 @@
+# @package model.head
+
+_target_: model.heads.MAEDecoderHead
+encoder_embed_dim: ${model.backbone.embed_dim}
+decoder_embed_dim: 512
+decoder_depth: 4
+decoder_num_heads: 8
+patch_size: 16          # must match backbone patch_size
+input_channels: 3
+freq_bins: 224          # wavelet with interpolate=True outputs [B, 3, 224, 224] — H=224
+max_patches: 32         # 224/16=14 temporal tokens; 32 gives headroom

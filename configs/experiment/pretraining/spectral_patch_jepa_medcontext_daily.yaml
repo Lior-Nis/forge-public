@@ -1,0 +1,52 @@
+# @package _global_
+#
+# I-JEPA pretraining at MEDIUM context (500 timesteps) on daily-living data.
+# Budget-matched companion to the 2D-MAE MC encoder.
+#
+# Identical to spectral_patch_jepa_daily EXCEPT the data is routed to the
+# medcontext (len500_stride200) daily zarr instead of longcontext (len1000).
+# Same depth-4 SpectralPatchEncoder, same wavelet transform. Predicts masked
+# token representations in latent space via an EMA target encoder.
+
+defaults:
+  - override /model: jepa
+  - override /train: jepa
+  - override /data: jepa
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_medcontext_daily
+  - override /data/paths: kaggle_daily_medcontext
+  - override /data/splits: kaggle_daily/medcontext
+  - override /train/trainer: ssl_pretrain
+  - _self_
+
+model:
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  head:
+    encoder_embed_dim: 512
+    predictor_embed_dim: 256
+    predictor_depth: 2
+    num_heads: 8
+    max_patches: 256
+
+data:
+  dataloader:
+    batch_size: 640         # MC uses ~half the memory of LC -> doubled from 320
+
+train:
+  registry:
+    artifact_name_template: "jepa-spectralpatch-wavelet-medcontext-epoch{epoch}"
+  callbacks:
+    checkpoint:
+      dirpath: "./checkpoints/jepa/jepa_medcontext_daily"
+
+global:
+  experiment_name: "spectral_patch_jepa_medcontext_daily"

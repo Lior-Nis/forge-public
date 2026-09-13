@@ -1,0 +1,41 @@
+# @package model
+
+defaults:
+  - preprocessors: null
+  - transform: raw                # View 1: time domain
+  - backbone: fogformer
+  - signal_augmentor: default
+  - spectral_augmentor: default
+  - _self_
+
+img_size: ${global.img_size}
+
+transform_alt:                     # View 2: frequency domain
+  _target_: model.transforms.WaveletTransform
+  wavelet: 'morl'
+  min_freq: 0.3
+  max_freq: 50.0
+  n_scales: 100
+  highlight_transient: false
+  transient_weight: 0.0
+  img_size: ${global.img_size}
+  interpolate: false
+
+backbone_alt:                      # Separate encoder for frequency domain
+  _target_: model.backbones.FogFormer
+  patch_size: 10
+  embed_dim: 512
+  output_dim: 512
+  num_heads: 16
+  vit_depth: 6
+  dropout: 0.3
+  use_alibi: true
+  pre_norm: false
+  activation: 'GELU'
+  input_channels: 3
+
+head:
+  _target_: model.heads.SimCLRHead
+  encoder_dim: 512                 # embed_dim (pool_patches averages over patches)
+  projection_dim: 256
+  pool_patches: true

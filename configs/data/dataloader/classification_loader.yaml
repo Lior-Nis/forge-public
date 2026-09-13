@@ -1,0 +1,8 @@
+batch_size: 1024
+num_workers: 8
+shuffle: true
+drop_last: true
+prefetch_factor: 4
+pin_memory: true
+persistent_workers: true
+cache_data_dir: ${..paths.cache_root}

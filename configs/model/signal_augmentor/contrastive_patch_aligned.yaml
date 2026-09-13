@@ -1,0 +1,39 @@
+_target_: model.augmentors.SignalAugmenter
+# Patch-aligned contrastive augmentors.
+#
+# Excludes PhaseShiftAugmentor, TimeWarpingAugmentor, ResizeAugmentor — all three
+# shift patch boundaries, breaking the positional correspondence required by
+# patch-level contrastive loss (patch k in view1 must match patch k in view2).
+#
+# Safe transforms: amplitude, noise, axis orientation, additive frequency artifacts.
+augmentors:
+
+  - _target_: model.augmentors.LRFlipAugmentor
+    augmentor_config:
+      probability: 0.5
+
+  - _target_: model.augmentors.DeviceOrientationAugmentor
+    augmentor_config:
+      probability: 0.5
+      rotation_angle_range: [-30, 30]
+
+  - _target_: model.augmentors.NoiseAugmentor
+    augmentor_config:
+      noise_probability: 0.5
+      noise_level: 0.08
+      impulse_probability: 0.2
+      impulse_mask_probability: 0.01
+      impulse_level: 0.2
+
+  - _target_: model.augmentors.GaitAsymmetryAugmentor
+    augmentor_config:
+      probability: 0.3
+      asymmetry_freq_range: [0.5, 2.0]
+      asymmetry_strength_range: [0.05, 0.15]
+
+  - _target_: model.augmentors.TremorAugmentor
+    augmentor_config:
+      probability: 0.3
+      tremor_freq_range: [4.0, 6.0]
+      tremor_amplitude_range: [0.05, 0.15]
+      tremor_duration_range: [0.2, 0.5]

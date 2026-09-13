@@ -1,0 +1,66 @@
+# @package _global_
+#
+# Linear probe finetuning on defog using SpectralPatchEncoder backbone pretrained
+# with spectral patch MAE (sleek-monkey-199). Uses wavelet transform + longcontext
+# sequences (block_len=1000) to match pretraining conditions.
+
+defaults:
+  # Non-override entries must come first in Hydra
+  - /data/hierarchical_norm@data.hierarchical_norm: cross_protocol
+  # Overrides
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - override /data/paths: kaggle_defog_pure_valid_longcontext
+  - override /data/splits: kaggle_labeled/defog_only
+  - override /model/signal_augmentor: default
+  - override /model/preprocessors: hierarchical_norm_pure
+  - override /model/head: gru_binary_classification_heavy
+  - override /train/optimizer: adamw
+  - override /train/scheduler: cosine
+  - override /train/loss: focal_binary_ce
+  - override /train/callbacks: classification
+  - override /train/registry: default
+  - override /train/trainer: fog_trainer_no_limits
+  - override /train/logger: classification
+  - override /data/dataset: binary_dataset
+  - override /data/dataloader: classification_loader
+  - _self_
+
+global:
+  experiment_name: spectral_patch_mae_finetune_defog
+  seed: 42
+
+model:
+  img_size: ${global.img_size}
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  backbone:
+    dropout: 0.0   # frozen backbone — dropout irrelevant during linear probe
+  head:
+    input_seq_len: 20   # nW time steps after freq-mean aggregation in classification pipeline
+    dropout: 0.3
+
+train:
+  weights:
+    load_from: checkpoints/mae/sleek-monkey-199/last.ckpt
+    load_strategy: backbone_only
+    freeze_backbone: true
+    unfreeze_schedule:
+      enabled: false
+
+  optimizer:
+    lr: 1e-3
+
+  scheduler:
+    T_max: 30
+
+  trainer:
+    max_epochs: 30

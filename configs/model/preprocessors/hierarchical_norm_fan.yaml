@@ -1,0 +1,37 @@
+
+_target_: model.preprocessors.SignalPreprocessor
+preprocessors:
+  - _target_: model.preprocessors.ResamplePreprocessor
+    target_rate: 100
+    original_rate: 100
+    method: linear
+
+  - _target_: model.preprocessors.UnitConversionPreprocessor
+    from_unit: g
+    to_unit: m/s2
+
+  - _target_: model.preprocessors.DetrendPreprocessor
+    method: linear
+
+  - _target_: model.preprocessors.BandpassFilterPreprocessor
+    low_freq: 0.5
+    high_freq: 20.0
+    order: 4
+    sample_rate: 100
+
+  - _target_: model.preprocessors.PatientNormalizationPreprocessor
+    num_features: 3
+    method: zscore
+    eps: 1e-8
+    # stats are injected at train start from the training-fold (no-leakage); no stats_path needed.
+
+  - _target_: model.preprocessors.SessionNormalizationPreprocessor
+    num_features: 3
+    method: fan
+    eps: 1e-5
+    affine: true
+    freq_bands:
+      - [0.5, 3.0]
+      - [3.0, 8.0]
+      - [8.0, 20.0]
+    sample_rate: 100.0

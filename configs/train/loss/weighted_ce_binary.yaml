@@ -1,0 +1,4 @@
+# @package train.loss
+_target_: model.losses.WeightedCrossEntropyLoss
+compute_class_weights: true
+reduction: mean

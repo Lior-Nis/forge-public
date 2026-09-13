@@ -1,0 +1,11 @@
+# @package _global_.train.loss
+
+_target_: model.losses.JointLoss
+losses:
+  - target: torch.nn.MSELoss
+    weight: 0.7
+  - target: model.losses.SSIMLoss
+    weight: 0.3
+    window_size: 11
+    data_range: 1.0
+    channel_reduction: mean

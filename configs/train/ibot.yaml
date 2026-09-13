@@ -1,0 +1,24 @@
+defaults:
+  - optimizer: adamw
+  - scheduler: cosine
+  - loss: ibot
+  - callbacks: pretraining
+  - logger: pretraining
+  - logging: pretraining
+  - registry: default
+  - task_manager: ibot
+  - trainer: fog_mae
+  - _self_
+
+pipeline_type: "ibot"
+
+optimizer:
+  lr: 1.5e-4
+
+callbacks:
+  checkpoint:
+    dirpath: "./checkpoints/ibot"
+
+registry:
+  monitor_metric: "losses/val_loss"
+  monitor_mode: "min"

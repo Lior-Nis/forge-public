@@ -1,0 +1,9 @@
+_target_: pytorch_lightning.loggers.WandbLogger
+project: "fog-segmentation"
+save_dir: "./logs"
+tags: []
+log_model: True
+mode: "online"
+settings:
+  _save_code: True
+settings.summary.max_table_rows: 10000

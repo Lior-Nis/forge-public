@@ -1,0 +1,7 @@
+
+defaults:
+  - base
+  - _self_
+
+_target_: data.fog_classification_dataset.FOGClassificationDataset
+classification_strategy: "multiclass_with_background"

@@ -1,0 +1,694 @@
+meta:
+  paper: Self-supervised learning improves cross-cohort freezing-of-gait detection
+    from a single lower-back accelerometer
+  authors: Lior Nisimov, Amit Salomon, Eran Gazit, Talia Herman, Lior Rokach, Jeffrey
+    M. Hausdorff, Nathaniel Shimoni
+  headline_model: mc_probe_ensemble
+  released_seed: 42
+  manuscript_seeds:
+  - 42
+  - 43
+  - 44
+  headline_model_note: The manuscript's released detector is nine BiGRU heads (3 participant
+    folds x 3 seeds) over one shared frozen MC encoder. This repo ships the seed-42
+    heads (mc_probe_fold{0,1,2}.safetensors), which rebuild the seed-42 three-fold
+    ensemble -- the configuration this repo's eval scripts run. Each head file already
+    contains its encoder, so encoders/*.safetensors are needed only to train new heads.
+    Values under `results` are the nine-head numbers; the seed-42 subset lands within
+    ~0.02 of them.
+  weights_format: 'safetensors, weights only. Each file holds trained tensors and
+    data-derived normalisation buffers -- no training configuration, no optimiser
+    state, no file paths. Rebuild a model from the `experiment` config named on its
+    entry: utils.released_weights.load_released_model().'
+  threshold_protocol: defog_val_pr11
+  license: MIT
+  hf_weights_repo: Liornis/forge-fog
+  hf_dataset_repo: Liornis/fog-dataset
+encoders:
+  lc:
+    name: encoder_lc_mae
+    hf_path: encoders/lc.safetensors
+    local: release/forge-fog/encoders/lc.safetensors
+    experiment: pretraining/spectral_patch_mae_daily
+    window_frames: 1000
+    vit_depth: 4
+    params: 14147072
+    role: FORGE backbone (long context, 10s)
+  mc:
+    name: encoder_mc_mae
+    hf_path: encoders/mc.safetensors
+    local: release/forge-fog/encoders/mc.safetensors
+    experiment: pretraining/spectral_patch_mae_medcontext_daily
+    window_frames: 500
+    vit_depth: 4
+    params: 14147072
+    role: FORGE backbone (medium context, 5s)
+  sc:
+    name: encoder_sc_mae
+    hf_path: encoders/sc.safetensors
+    local: release/forge-fog/encoders/sc.safetensors
+    experiment: pretraining/spectral_patch_mae_shortcontext_daily
+    window_frames: 200
+    vit_depth: 4
+    params: 12918272
+    role: FORGE backbone (short context, 2s)
+classification:
+- name: lc_probe_fold0
+  context: lc
+  phase: probe
+  fold: 0
+  seed: 42
+  hf_path: classification/lc_probe_fold0.safetensors
+  local: release/forge-fog/classification/lc_probe_fold0.safetensors
+  experiment: classification/spectral_patch_mae_lc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc0
+  headline: false
+- name: lc_probe_fold1
+  context: lc
+  phase: probe
+  fold: 1
+  seed: 42
+  hf_path: classification/lc_probe_fold1.safetensors
+  local: release/forge-fog/classification/lc_probe_fold1.safetensors
+  experiment: classification/spectral_patch_mae_lc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc1
+  headline: false
+- name: lc_probe_fold2
+  context: lc
+  phase: probe
+  fold: 2
+  seed: 42
+  hf_path: classification/lc_probe_fold2.safetensors
+  local: release/forge-fog/classification/lc_probe_fold2.safetensors
+  experiment: classification/spectral_patch_mae_lc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc2
+  headline: false
+- name: mc_probe_fold0
+  context: mc
+  phase: probe
+  fold: 0
+  seed: 42
+  hf_path: classification/mc_probe_fold0.safetensors
+  local: release/forge-fog/classification/mc_probe_fold0.safetensors
+  experiment: classification/spectral_patch_mae_mc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc0
+  headline: true
+- name: mc_probe_fold1
+  context: mc
+  phase: probe
+  fold: 1
+  seed: 42
+  hf_path: classification/mc_probe_fold1.safetensors
+  local: release/forge-fog/classification/mc_probe_fold1.safetensors
+  experiment: classification/spectral_patch_mae_mc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc1
+  headline: true
+- name: mc_probe_fold2
+  context: mc
+  phase: probe
+  fold: 2
+  seed: 42
+  hf_path: classification/mc_probe_fold2.safetensors
+  local: release/forge-fog/classification/mc_probe_fold2.safetensors
+  experiment: classification/spectral_patch_mae_mc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc2
+  headline: true
+- name: sc_probe_fold0
+  context: sc
+  phase: probe
+  fold: 0
+  seed: 42
+  hf_path: classification/sc_probe_fold0.safetensors
+  local: release/forge-fog/classification/sc_probe_fold0.safetensors
+  experiment: classification/spectral_patch_mae_sc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc0
+  headline: false
+- name: sc_probe_fold1
+  context: sc
+  phase: probe
+  fold: 1
+  seed: 42
+  hf_path: classification/sc_probe_fold1.safetensors
+  local: release/forge-fog/classification/sc_probe_fold1.safetensors
+  experiment: classification/spectral_patch_mae_sc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc1
+  headline: false
+- name: sc_probe_fold2
+  context: sc
+  phase: probe
+  fold: 2
+  seed: 42
+  hf_path: classification/sc_probe_fold2.safetensors
+  local: release/forge-fog/classification/sc_probe_fold2.safetensors
+  experiment: classification/spectral_patch_mae_sc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc2
+  headline: false
+- name: lc_finetune_fold0
+  context: lc
+  phase: finetune
+  fold: 0
+  seed: 42
+  hf_path: classification/lc_finetune_fold0.safetensors
+  local: release/forge-fog/classification/lc_finetune_fold0.safetensors
+  experiment: classification/spectral_patch_mae_lc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc0
+  headline: false
+- name: lc_finetune_fold1
+  context: lc
+  phase: finetune
+  fold: 1
+  seed: 42
+  hf_path: classification/lc_finetune_fold1.safetensors
+  local: release/forge-fog/classification/lc_finetune_fold1.safetensors
+  experiment: classification/spectral_patch_mae_lc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc1
+  headline: false
+- name: lc_finetune_fold2
+  context: lc
+  phase: finetune
+  fold: 2
+  seed: 42
+  hf_path: classification/lc_finetune_fold2.safetensors
+  local: release/forge-fog/classification/lc_finetune_fold2.safetensors
+  experiment: classification/spectral_patch_mae_lc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc2
+  headline: false
+- name: mc_finetune_fold0
+  context: mc
+  phase: finetune
+  fold: 0
+  seed: 42
+  hf_path: classification/mc_finetune_fold0.safetensors
+  local: release/forge-fog/classification/mc_finetune_fold0.safetensors
+  experiment: classification/spectral_patch_mae_mc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc0
+  headline: false
+- name: mc_finetune_fold1
+  context: mc
+  phase: finetune
+  fold: 1
+  seed: 42
+  hf_path: classification/mc_finetune_fold1.safetensors
+  local: release/forge-fog/classification/mc_finetune_fold1.safetensors
+  experiment: classification/spectral_patch_mae_mc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc1
+  headline: false
+- name: mc_finetune_fold2
+  context: mc
+  phase: finetune
+  fold: 2
+  seed: 42
+  hf_path: classification/mc_finetune_fold2.safetensors
+  local: release/forge-fog/classification/mc_finetune_fold2.safetensors
+  experiment: classification/spectral_patch_mae_mc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc2
+  headline: false
+- name: sc_finetune_fold0
+  context: sc
+  phase: finetune
+  fold: 0
+  seed: 42
+  hf_path: classification/sc_finetune_fold0.safetensors
+  local: release/forge-fog/classification/sc_finetune_fold0.safetensors
+  experiment: classification/spectral_patch_mae_sc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc0
+  headline: false
+- name: sc_finetune_fold1
+  context: sc
+  phase: finetune
+  fold: 1
+  seed: 42
+  hf_path: classification/sc_finetune_fold1.safetensors
+  local: release/forge-fog/classification/sc_finetune_fold1.safetensors
+  experiment: classification/spectral_patch_mae_sc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc1
+  headline: false
+- name: sc_finetune_fold2
+  context: sc
+  phase: finetune
+  fold: 2
+  seed: 42
+  hf_path: classification/sc_finetune_fold2.safetensors
+  local: release/forge-fog/classification/sc_finetune_fold2.safetensors
+  experiment: classification/spectral_patch_mae_sc_valid_defog_soft
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc2
+  headline: false
+- name: lc_supervised_fold0
+  context: lc
+  phase: supervised
+  fold: 0
+  seed: 42
+  hf_path: classification/lc_supervised_fold0.safetensors
+  local: release/forge-fog/classification/lc_supervised_fold0.safetensors
+  experiment: classification/supervised_lc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc0
+  headline: false
+- name: lc_supervised_fold1
+  context: lc
+  phase: supervised
+  fold: 1
+  seed: 42
+  hf_path: classification/lc_supervised_fold1.safetensors
+  local: release/forge-fog/classification/lc_supervised_fold1.safetensors
+  experiment: classification/supervised_lc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc1
+  headline: false
+- name: lc_supervised_fold2
+  context: lc
+  phase: supervised
+  fold: 2
+  seed: 42
+  hf_path: classification/lc_supervised_fold2.safetensors
+  local: release/forge-fog/classification/lc_supervised_fold2.safetensors
+  experiment: classification/supervised_lc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_lc2
+  headline: false
+- name: mc_supervised_fold0
+  context: mc
+  phase: supervised
+  fold: 0
+  seed: 42
+  hf_path: classification/mc_supervised_fold0.safetensors
+  local: release/forge-fog/classification/mc_supervised_fold0.safetensors
+  experiment: classification/supervised_mc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc0
+  headline: false
+- name: mc_supervised_fold1
+  context: mc
+  phase: supervised
+  fold: 1
+  seed: 42
+  hf_path: classification/mc_supervised_fold1.safetensors
+  local: release/forge-fog/classification/mc_supervised_fold1.safetensors
+  experiment: classification/supervised_mc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc1
+  headline: false
+- name: mc_supervised_fold2
+  context: mc
+  phase: supervised
+  fold: 2
+  seed: 42
+  hf_path: classification/mc_supervised_fold2.safetensors
+  local: release/forge-fog/classification/mc_supervised_fold2.safetensors
+  experiment: classification/supervised_mc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_mc2
+  headline: false
+- name: sc_supervised_fold0
+  context: sc
+  phase: supervised
+  fold: 0
+  seed: 42
+  hf_path: classification/sc_supervised_fold0.safetensors
+  local: release/forge-fog/classification/sc_supervised_fold0.safetensors
+  experiment: classification/supervised_sc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc0
+  headline: false
+- name: sc_supervised_fold1
+  context: sc
+  phase: supervised
+  fold: 1
+  seed: 42
+  hf_path: classification/sc_supervised_fold1.safetensors
+  local: release/forge-fog/classification/sc_supervised_fold1.safetensors
+  experiment: classification/supervised_sc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc1
+  headline: false
+- name: sc_supervised_fold2
+  context: sc
+  phase: supervised
+  fold: 2
+  seed: 42
+  hf_path: classification/sc_supervised_fold2.safetensors
+  local: release/forge-fog/classification/sc_supervised_fold2.safetensors
+  experiment: classification/supervised_sc_fogr025_defog
+  splits: kaggle_labeled/kfold_defog_fogcount_valid_sc2
+  headline: false
+datasets:
+  fogathome:
+    hf_subdir: fogathome
+    role: external_structured
+    prevalence: 0.356
+    n_patients: 12
+  dailyliving:
+    hf_subdir: fogathome_dailyliving
+    role: external_naturalistic
+    prevalence: 0.0109
+    prevalence_eligible: 0.0292
+    n_patients: 11
+  kaggle:
+    hf_subdir: kaggle_labeled
+    role: in_distribution
+    n_patients: 57
+cohorts:
+  kaggle:
+    label: DeFOG
+    n_participants: 57
+    in_public_release: true
+    role: supervised development + in-distribution reference
+    note: 27.0 h structured at-home FOG protocol; source of the operating point.
+  fogathome:
+    label: FogAtHome-provoking
+    n_participants: 12
+    in_public_release: true
+    shift: Cross-study / cross-cohort
+  tdcs_fog:
+    label: tDCS-FOG
+    n_participants: 71
+    in_public_release: false
+    shift: Cross-protocol / acquisition
+  stanford:
+    label: Stanford
+    n_participants: 7
+    in_public_release: false
+    shift: Cross-site / device / treatment state
+  dailyliving:
+    label: FogAtHome daily living
+    n_participants: 11
+    in_public_release: true
+    shift: Structured supervised development -> naturalistic labeled evaluation
+    note: Metrics are computed within prespecified label-independent walking-and-standing
+      periods.
+model_sets:
+  mc_probe_ensemble:
+    label: Released detector
+    table: Table 3
+    definition: 'Nine BiGRU heads over one shared frozen MC (5 s) encoder: 3 participant
+      folds x 3 seeds (42, 43, 44). Within a seed the three fold scores are averaged
+      at window level; the three seed-specific frame scores are then averaged with
+      equal weight. Applied to every external cohort at the unchanged DeFOG-derived
+      operating point of 0.35.'
+  mc_matched_arms:
+    label: 'Controlled comparison: self-supervised vs supervised from scratch'
+    table: Table 2
+    definition: Two arms differing only in encoder initialisation, under matched downstream
+      training (same architecture, trainable parameters, DeFOG folds and optimiser).
+      The self-supervised arm is joint encoder-classifier optimisation (the fine-tune
+      arm). This is the abstract's headline effect and is a DIFFERENT model set from
+      the released detector, so its values on the same cohort are lower.
+  mc_probe_3fold_seed42:
+    label: Seed-42 three-fold MC probe (in-distribution reference)
+    table: Supplementary Table S7
+    definition: The three released seed-42 MC probe heads, averaged across folds.
+      This is the model set this repository's evaluation scripts run.
+results:
+- id: fogathome_icc_tf
+  model: mc_probe_ensemble
+  cohort: fogathome
+  metric: ICC(%TF)
+  value: 0.899
+  ci:
+  - 0.7
+  - 0.97
+  basis: participant-level %TF at the fixed DeFOG-derived operating point of 0.35;
+    annotator-verified frames
+  table: Table 3
+  figure: Fig. 4a
+  script: source .venv/bin/activate && python scripts/eval/compute_icc_thresholds.py
+    --out logs/RESULTS_icc.md
+  verification: one_click
+- id: fogathome_auroc
+  model: mc_probe_ensemble
+  cohort: fogathome
+  metric: AUROC
+  value: 0.887
+  ci:
+  - 0.83
+  - 0.922
+  basis: duration-weighted pooled-frame; annotator-verified frames
+  table: Table 3
+  script: source .venv/bin/activate && python scripts/eval/eval_comprehensive.py --datasets
+    fogathome --contexts mc --models probe --output logs/comprehensive_eval.csv --cache-dir
+    logs/comprehensive_eval_cache
+  verification: one_click
+- id: fogathome_ap
+  model: mc_probe_ensemble
+  cohort: fogathome
+  metric: AP
+  value: 0.804
+  ci:
+  - 0.573
+  - 0.902
+  basis: duration-weighted pooled-frame; annotator-verified frames; NormAP 0.695
+  table: Table 3
+  verification: one_click
+- id: tdcs_auroc
+  model: mc_probe_ensemble
+  cohort: tdcs_fog
+  metric: AUROC
+  value: 0.917
+  ci:
+  - 0.863
+  - 0.95
+  basis: duration-weighted pooled-frame, 6,578,808 frames resampled 128 -> 100 Hz
+  table: Table 3
+  verification: recorded
+  verification_note: tDCS-FOG is not part of the public data release; no in-repo pipeline
+    recomputes it.
+- id: tdcs_ap
+  model: mc_probe_ensemble
+  cohort: tdcs_fog
+  metric: AP
+  value: 0.812
+  ci:
+  - 0.55
+  - 0.923
+  basis: duration-weighted pooled-frame; NormAP 0.702 [0.403, 0.847]
+  table: Table 3
+  verification: recorded
+  verification_note: tDCS-FOG is not part of the public data release; no in-repo pipeline
+    recomputes it.
+- id: tdcs_icc_tf
+  model: mc_probe_ensemble
+  cohort: tdcs_fog
+  metric: ICC(%TF)
+  value: 0.876
+  ci:
+  - 0.81
+  - 0.92
+  basis: participant-level %TF at the fixed 0.35 operating point; sens 0.717 / spec
+    0.850
+  table: Table 3
+  verification: recorded
+  verification_note: tDCS-FOG is not part of the public data release; no in-repo pipeline
+    recomputes it.
+- id: stanford_auroc
+  model: mc_probe_ensemble
+  cohort: stanford
+  metric: AUROC
+  value: 0.734
+  ci:
+  - 0.624
+  - 0.846
+  basis: duration-weighted pooled-frame, lumbar APDM channel resampled 128 -> 100
+    Hz
+  table: Table 3
+  verification: recorded
+  verification_note: Stanford cohort is not part of the public data release; no in-repo
+    pipeline recomputes it.
+- id: stanford_ap
+  model: mc_probe_ensemble
+  cohort: stanford
+  metric: AP
+  value: 0.4
+  basis: duration-weighted pooled-frame
+  table: Table 3
+  verification: recorded
+  verification_note: Stanford cohort is not part of the public data release; no in-repo
+    pipeline recomputes it.
+- id: stanford_icc_tf
+  model: mc_probe_ensemble
+  cohort: stanford
+  metric: ICC(%TF)
+  value: -0.119
+  ci:
+  - -0.92
+  - 0.67
+  basis: participant-level at the unchanged 0.35 operating point; the oracle-rule
+    threshold is 0.18 (ICC 0.327). Operating point does not transfer.
+  table: Table 3
+  verification: recorded
+  verification_note: Stanford cohort is not part of the public data release; no in-repo
+    pipeline recomputes it.
+- id: dailyliving_auroc
+  model: mc_probe_ensemble
+  cohort: dailyliving
+  metric: AUROC
+  value: 0.803
+  ci:
+  - 0.737
+  - 0.877
+  basis: duration-weighted pooled-frame within the prespecified label-independent
+    walking-and-standing periods (58.18 h)
+  table: Table 3
+  figure: Fig. 5a
+  verification: scripted
+  script: source .venv/bin/activate && python scripts/eval/eval_comprehensive.py --datasets
+    dailyliving --contexts mc --models probe --output logs/comprehensive_eval.csv
+    --cache-dir logs/comprehensive_eval_cache && python scripts/eval/compute_icc_thresholds.py
+    --cache-dir logs/comprehensive_eval_cache --out logs/RESULTS_icc.md && python
+    scripts/eval/eval_dailyliving_walkstand.py
+- id: dailyliving_ap
+  model: mc_probe_ensemble
+  cohort: dailyliving
+  metric: AP
+  value: 0.105
+  basis: eligible domain, prevalence 2.92%; NormAP 0.078
+  table: Table 3
+  verification: scripted
+  script: source .venv/bin/activate && python scripts/eval/eval_comprehensive.py --datasets
+    dailyliving --contexts mc --models probe --output logs/comprehensive_eval.csv
+    --cache-dir logs/comprehensive_eval_cache && python scripts/eval/compute_icc_thresholds.py
+    --cache-dir logs/comprehensive_eval_cache --out logs/RESULTS_icc.md && python
+    scripts/eval/eval_dailyliving_walkstand.py
+- id: dailyliving_icc_tf
+  model: mc_probe_ensemble
+  cohort: dailyliving
+  metric: ICC(%TF)
+  value: 0.656
+  ci:
+  - -0.129
+  - 0.872
+  basis: participant-level eligible-domain %TF at the 0.35 operating point; MAE 2.38
+    pp
+  table: Table 3
+  figure: Supplementary Fig. S2b
+  verification: scripted
+  script: source .venv/bin/activate && python scripts/eval/eval_comprehensive.py --datasets
+    dailyliving --contexts mc --models probe --output logs/comprehensive_eval.csv
+    --cache-dir logs/comprehensive_eval_cache && python scripts/eval/compute_icc_thresholds.py
+    --cache-dir logs/comprehensive_eval_cache --out logs/RESULTS_icc.md && python
+    scripts/eval/eval_dailyliving_walkstand.py
+- id: matched_fogathome_auroc
+  model: mc_matched_arms
+  cohort: fogathome
+  metric: AUROC
+  value: 0.861
+  arms:
+    self_supervised: 0.861
+    supervised_from_scratch: 0.752
+  difference: 0.109
+  difference_ci:
+  - 0.029
+  - 0.182
+  p_value: 0.007
+  basis: duration-weighted pooled-frame; paired participant-clustered bootstrap contrast
+  table: Table 2
+  figure: Fig. 3a
+  script: source .venv/bin/activate && python scripts/eval/eval_comprehensive.py --datasets
+    fogathome --contexts mc --models finetune supervised --output logs/comprehensive_eval.csv
+    --cache-dir logs/comprehensive_eval_cache
+  verification: scripted
+- id: matched_fogathome_ap
+  model: mc_matched_arms
+  cohort: fogathome
+  metric: AP
+  value: 0.784
+  arms:
+    self_supervised: 0.784
+    supervised_from_scratch: 0.592
+  difference: 0.192
+  difference_ci:
+  - 0.064
+  - 0.338
+  p_value: 0.0005
+  basis: duration-weighted pooled-frame; paired participant-clustered bootstrap contrast
+  table: Table 2
+  figure: Fig. 3a
+  script: source .venv/bin/activate && python scripts/eval/eval_comprehensive.py --datasets
+    fogathome --contexts mc --models finetune supervised --output logs/comprehensive_eval.csv
+    --cache-dir logs/comprehensive_eval_cache
+  verification: scripted
+- id: matched_fogathome_icc_tf
+  model: mc_matched_arms
+  cohort: fogathome
+  metric: ICC(%TF)
+  value: 0.873
+  arms:
+    self_supervised: 0.873
+    supervised_from_scratch: 0.002
+  difference: 0.871
+  difference_ci:
+  - 0.783
+  - 0.932
+  p_value: 0.0005
+  basis: secondary endpoint; each arm at its own independently selected DeFOG validation
+    operating point
+  table: Table 2
+  script: source .venv/bin/activate && python scripts/eval/compute_icc_thresholds.py
+    --out logs/RESULTS_icc.md
+  verification: scripted
+- id: matched_tdcs_auroc
+  model: mc_matched_arms
+  cohort: tdcs_fog
+  metric: AUROC
+  value: 0.8692
+  arms:
+    self_supervised: 0.8692
+    supervised_from_scratch: 0.6568
+  difference: 0.2123
+  difference_ci:
+  - 0.126
+  - 0.28
+  p_value: 0.0005
+  basis: duration-weighted pooled-frame; paired participant-clustered bootstrap contrast
+  table: Table 2
+  figure: Fig. 3a
+  verification: recorded
+  verification_note: tDCS-FOG is not part of the public data release; no in-repo pipeline
+    recomputes it.
+- id: matched_tdcs_ap
+  model: mc_matched_arms
+  cohort: tdcs_fog
+  metric: AP
+  value: 0.811
+  arms:
+    self_supervised: 0.811
+    supervised_from_scratch: 0.5007
+  difference: 0.3103
+  difference_ci:
+  - 0.133
+  - 0.397
+  p_value: 0.0005
+  basis: duration-weighted pooled-frame; paired participant-clustered bootstrap contrast.
+    NormAP 0.7004 [0.407, 0.841] self-supervised vs 0.2084 [0.075, 0.360] supervised
+    from scratch
+  table: Table 2
+  figure: Fig. 3a
+  verification: recorded
+  verification_note: tDCS-FOG is not part of the public data release; no in-repo pipeline
+    recomputes it.
+- id: matched_tdcs_icc_tf
+  model: mc_matched_arms
+  cohort: tdcs_fog
+  metric: ICC(%TF)
+  value: 0.669
+  arms:
+    self_supervised: 0.669
+    supervised_from_scratch: 0.053
+  difference: 0.616
+  difference_ci:
+  - 0.424
+  - 0.738
+  p_value: 0.0005
+  basis: secondary endpoint; each arm at its own independently selected DeFOG validation
+    operating point
+  table: Table 2
+  verification: recorded
+  verification_note: tDCS-FOG is not part of the public data release; no in-repo pipeline
+    recomputes it.
+- id: defog_window_ap
+  model: mc_probe_3fold_seed42
+  cohort: kaggle
+  model_members:
+  - mc_probe_fold0
+  - mc_probe_fold1
+  - mc_probe_fold2
+  metric: AP
+  value: 0.73
+  basis: window-level AP on the DeFOG validation folds, single-seed arm (seed 42);
+    fine-tune 0.708 and supervised-from-scratch 0.492 at the same 5 s context
+  table: Supplementary Table S7
+  script: source .venv/bin/activate && python scripts/eval/eval_comprehensive.py --datasets
+    kaggle --contexts mc --models probe --output logs/comprehensive_eval.csv --cache-dir
+    logs/comprehensive_eval_cache
+  verification: one_click

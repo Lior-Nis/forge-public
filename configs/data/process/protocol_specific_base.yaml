@@ -1,0 +1,4 @@
+
+defaults:
+  - kaggle
+  - _self_

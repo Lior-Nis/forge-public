@@ -1,0 +1,11 @@
+_target_: model.backbones.MambaBackbone
+input_channels: 3
+patch_size: 10        # same as FogFormer default
+embed_dim: 256        # same as FogFormer → compatible with gru_sequence_* heads
+num_layers: 4         # 4 bi-directional Mamba blocks (= 8 effective layers)
+d_state: 16           # SSM state dimension
+d_conv: 4             # causal conv width
+expand: 2             # inner dim = expand * embed_dim = 512
+dropout: 0.1
+bidirectional: true
+output_dim: 256       # required by BackboneConfig Pydantic schema

@@ -1,0 +1,47 @@
+# @package _global_
+#
+# SimCLR v2 — max-pool instead of mean-pool before projection head.
+#
+# Exp 021 (spectral_patch_simclr_daily) uses pool_method="mean" which may
+# collapse spectral-patch representations back to the ~3D mean gait signature:
+# averaging 100 patches cancels local variations, leaving only global statistics
+# (same mechanism that killed Exp 006 on raw signals).
+#
+# Max-pooling selects the peak activation per embedding dimension across all
+# patches, preserving the most discriminative spectral features rather than
+# their average. This is the minimal change to test whether the pooling
+# bottleneck is the root cause of collapse.
+#
+# Run this if Exp 021 val_loss plateaus at >5.54 (random baseline) by epoch 3.
+
+defaults:
+  - override /model: simclr
+  - override /train: simclr
+  - override /data: simclr_daily
+  - override /model/backbone: spectral_patch_encoder
+  - override /data/process: kaggle_longcontext
+  - _self_
+
+model:
+  transform:
+    _target_: model.transforms.WaveletTransform
+    wavelet: 'morl'
+    min_freq: 0.3
+    max_freq: 50.0
+    n_scales: 100
+    highlight_transient: false
+    transient_weight: 0.0
+    img_size: ${global.img_size}
+    interpolate: false
+  head:
+    pool_patches: true
+    pool_method: "max"
+
+train:
+  trainer:
+    max_epochs: 100
+  registry:
+    artifact_name_template: "simclr-spectralpatch-wavelet-maxpool-epoch{epoch}"
+
+global:
+  experiment_name: "spectral_patch_simclr_daily_v2"

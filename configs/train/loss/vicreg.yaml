@@ -1,0 +1,8 @@
+# @package _global_.train.loss
+
+_target_: model.losses.vicreg.VICRegLoss
+lambda_var: 25.0
+lambda_inv: 25.0
+lambda_cov: 1.0
+epsilon: 1.0e-4
+reduction: mean
