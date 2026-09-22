@@ -1,21 +1,21 @@
 """Tests for data processing schemas and Pydantic validation."""
 
-import numpy as np
-import pytest
-from pydantic import ValidationError
-
 # Direct import to avoid circular dependency
 # Import the module file directly, not through package __init__.py
 import importlib.util
 import sys
 from pathlib import Path
 
+import numpy as np
+import pytest
+from pydantic import ValidationError
+
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Load schemas module directly
-schemas_path = project_root / "data" / "process" / "schemas.py"
+schemas_path = project_root / "src" / "data" / "process" / "schemas.py"
 spec = importlib.util.spec_from_file_location("schemas_module", schemas_path)
 schemas_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(schemas_module)

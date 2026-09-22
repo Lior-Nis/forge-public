@@ -9,6 +9,7 @@ defaults:
   - trainer: fog_trainer
   - _self_
 
+pipeline_target: pipeline.multitask_ssl.MultiTaskSSLPipeline
 pipeline_type: "multitask_ssl"
 
 callbacks:

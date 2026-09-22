@@ -5,8 +5,8 @@
 # VICReg's variance + covariance terms structurally prevent collapse without hard negatives.
 #
 # Usage:
-#   python scripts/pretrain_simclr.py experiment=pretraining/vicreg_daily
-#   python scripts/pretrain_simclr.py experiment=pretraining/vicreg_daily train.trainer.max_epochs=50
+#   python scripts/train.py experiment=pretraining/vicreg_daily
+#   python scripts/train.py experiment=pretraining/vicreg_daily train.trainer.max_epochs=50
 
 defaults:
   - override /model: simclr

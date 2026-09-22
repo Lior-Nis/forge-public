@@ -8,11 +8,11 @@ REM    2. set up Python + all dependencies (uses your NVIDIA GPU if present),
 REM    3. download the model + data from the internet,
 REM    4. run the evaluation and print the results.
 REM
-REM  Needs: an internet connection and ~20 GB of free disk space.
+REM  Needs: an internet connection and ~30 GB of free disk space.
 REM  The first run takes a while (large download). Leave the window open.
 REM  Results are written into the 'logs' folder next to this file.
 REM
-REM  Advanced: pass flags through, e.g.  reproduce.bat --full
+REM  Advanced: pass flags through, e.g.  reproduce.bat --datasets stanford
 REM ============================================================================
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
@@ -47,7 +47,7 @@ if errorlevel 1 (
 REM --- 2. provision environment ----------------------------------------------
 echo.
 echo [1/2] Setting up the environment ^(this can take several minutes the first time^)...
-uv sync
+uv sync --frozen
 if errorlevel 1 (
     echo.
     echo [error] Environment setup failed. Check your internet connection and try again.

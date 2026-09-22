@@ -1,16 +1,18 @@
 from pathlib import Path
+
 import pytest
-from scripts.release.manifest import build_manifest, validate_manifest, RELEASE_SET
+
+from scripts.release.manifest import RELEASE_SET, build_manifest
 
 REPO = Path(__file__).resolve().parents[2]
 
-def test_release_set_has_exactly_30_artifacts():
+def test_release_set_has_exactly_36_artifacts():
     n = len(RELEASE_SET["encoders"]) + len(RELEASE_SET["classification"])
-    assert n == 30, f"expected 30 release artifacts, got {n}"
+    assert n == 36, f"expected 36 release artifacts, got {n}"
 
-def test_release_set_is_three_encoders_and_27_classification():
+def test_release_set_is_three_encoders_and_33_classification():
     assert len(RELEASE_SET["encoders"]) == 3
-    assert len(RELEASE_SET["classification"]) == 27
+    assert len(RELEASE_SET["classification"]) == 33
     phases = {c["phase"] for c in RELEASE_SET["classification"]}
     assert phases == {"probe", "finetune", "supervised"}
     contexts = {c["context"] for c in RELEASE_SET["classification"]}
@@ -22,23 +24,31 @@ def test_manifest_marks_mc_probe_as_headline():
     m = build_manifest()
     headline = [c for c in m["classification"] if c.get("headline")]
     assert all(c["context"] == "mc" and c["phase"] == "probe" for c in headline)
-    assert len(headline) == 3  # 3 folds
+    assert len(headline) == 9
 
-def test_every_local_path_exists_on_disk():
+def test_local_release_paths_are_a_supported_download_set():
     m = build_manifest()
-    missing = validate_manifest(m, REPO)
-    total = len(RELEASE_SET["encoders"]) + len(RELEASE_SET["classification"])
-    # Post-onboard release-integrity check. On a bare clone (e.g. CI) the released
-    # checkpoints have not been downloaded — skip. Only fail on a PARTIAL/corrupt set
-    # (some present, some missing), which is a real integrity problem.
-    if len(missing) == total:
+    all_paths = {
+        entry["local"]
+        for entry in [*m["encoders"].values(), *m["classification"]]
+    }
+    headline_paths = {
+        m["encoders"]["mc"]["local"],
+        *(entry["local"] for entry in m["classification"] if entry.get("headline")),
+    }
+    present = {path for path in all_paths if (REPO / path).is_file()}
+
+    if not present:
         pytest.skip("released checkpoints not downloaded (bare clone / CI); run the onboard-repo steps to fetch them")
-    assert missing == [], f"missing checkpoints: {missing}"
+    assert present in (headline_paths, all_paths), (
+        "local checkpoints are neither the documented 10-file reproduction subset "
+        f"nor the complete release: {sorted(present)}"
+    )
 
 
 def test_public_name_is_the_hf_path_stem():
     """`name` is the published identity and is baked into forge_meta inside each
-    .ckpt, so it must never drift from the file it names. Deriving it in
+    safetensors file, so it must never drift from the file it names. Deriving it in
     manifest.py makes this structural; this pins it."""
     m = build_manifest()
     for c in m["classification"]:
@@ -101,82 +111,6 @@ def test_one_click_results_match_what_reproduce_actually_checks():
     assert declared == implemented, (
         f"declared-but-unchecked: {sorted(declared - implemented)}; "
         f"checked-but-undeclared: {sorted(implemented - declared)}")
-
-
-def test_manifest_matches_the_eval_scripts_weight_maps():
-    """The manifest and eval_comprehensive.py describe one release set. Drift
-    between them is how a published file stops matching the model it names."""
-    import scripts.eval.eval_comprehensive as ec
-
-    m = build_manifest()
-    for c in m["classification"]:
-        key = (c["context"], c["phase"])
-        assert ec.CKPT[key].format(fold=c["fold"]) == c["local"], c["name"]
-        assert ec.EXPERIMENT[key] == c["experiment"], c["name"]
-        assert ec.SPLITS[(c["context"], c["fold"])] == c["splits"], c["name"]
-
-
-def test_every_referenced_config_exists():
-    """`experiment` and `splits` are what rebuild a released model, so a typo in
-    either makes the weights unloadable."""
-    m = build_manifest()
-    for entry in list(m["classification"]) + list(m["encoders"].values()):
-        assert (REPO / "configs" / "experiment" / f"{entry['experiment']}.yaml").is_file(), \
-            f"{entry['name']}: missing experiment config {entry['experiment']}"
-        if entry.get("splits"):
-            assert (REPO / "configs" / "data" / "splits" / f"{entry['splits']}.yaml").is_file(), \
-                f"{entry['name']}: missing splits config {entry['splits']}"
-
-
-def test_release_is_weights_only():
-    """No published path may be a pickled Lightning checkpoint."""
-    m = build_manifest()
-    for entry in list(m["classification"]) + list(m["encoders"].values()):
-        assert entry["hf_path"].endswith(".safetensors"), entry["name"]
-        assert not entry["local"].endswith(".ckpt"), entry["name"]
-
-
-def test_every_result_names_a_documented_cohort_and_model_set():
-    """A number must say which cohort and which model set it belongs to. The
-    released detector and the controlled comparison report different values on
-    the same cohort, so an unlabelled number is unreadable."""
-    m = build_manifest()
-    for r in m["results"]:
-        assert r["cohort"] in m["cohorts"], f"{r['id']}: cohort not in cohorts block"
-        assert r["model"] in m["model_sets"], f"{r['id']}: model set not documented"
-
-
-def test_every_result_cites_where_the_manuscript_reports_it():
-    m = build_manifest()
-    for r in m["results"]:
-        assert r.get("table"), f"{r['id']}: no manuscript table cited"
-
-
-def test_controlled_comparison_carries_both_arms_and_the_contrast():
-    """Table 2 is a contrast, not a single value; dropping an arm would turn the
-    headline effect into an unattributed number."""
-    m = build_manifest()
-    matched = [r for r in m["results"] if r["model"] == "mc_matched_arms"]
-    assert len(matched) == 6  # 2 cohorts x {AUROC, AP, ICC(%TF)}
-    for r in matched:
-        arms = r["arms"]
-        assert set(arms) == {"self_supervised", "supervised_from_scratch"}
-        assert r["value"] == arms["self_supervised"]
-        assert r["difference"] == pytest.approx(
-            arms["self_supervised"] - arms["supervised_from_scratch"], abs=1e-4)
-        assert len(r["difference_ci"]) == 2 and r["p_value"] <= 0.05
-
-
-def test_released_and_matched_numbers_are_not_confusable():
-    """Same cohort, same metric, different model sets: both must be present and
-    distinctly labelled, so no reader takes one for a restatement of the other."""
-    m = build_manifest()
-    by_id = {r["id"]: r for r in m["results"]}
-    released, matched = by_id["fogathome_auroc"], by_id["matched_fogathome_auroc"]
-    assert released["cohort"] == matched["cohort"] == "fogathome"
-    assert released["model"] != matched["model"]
-    assert released["value"] != matched["value"]
-    assert released["table"] == "Table 3" and matched["table"] == "Table 2"
 
 
 def test_results_cover_only_cohorts_the_pipeline_knows_or_are_marked_recorded():

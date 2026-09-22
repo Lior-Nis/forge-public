@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use FORGE, please cite the software and the accompanying paper."
+title: "FORGE: Self-Supervised Freezing-of-Gait Detection"
+type: software
+authors:
+  - family-names: Nisimov
+    given-names: Lior
+    email: lior3226@gmail.com
+repository-code: "https://github.com/Lior-Nis/forge"
+url: "https://github.com/Lior-Nis/forge"
+license: MIT
+version: 0.1.0
+date-released: 2026-09-22
+keywords:
+  - Parkinson's disease
+  - freezing of gait
+  - accelerometer
+  - self-supervised learning

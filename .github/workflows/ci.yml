@@ -41,24 +41,26 @@ jobs:
           python-version: "3.11"
 
       - name: Install project (frozen lockfile)
-        run: uv sync --frozen
+        run: uv sync --frozen --extra dev
 
       - name: Import smoke
         run: uv run python -c "import data, model, pipeline, managers, utils; print('imports OK')"
 
       - name: Resolve Hydra configs for the headline experiments
         run: |
-          uv run python scripts/train/train_classification.py experiment=classification/best_fixed --cfg job > /dev/null
-          uv run python scripts/train/train_classification.py experiment=classification/spectral_patch_mae_mc_valid_defog_soft --cfg job > /dev/null
+          uv run python scripts/train.py experiment=classification/best_fixed --cfg job > /dev/null
+          uv run python scripts/train.py experiment=classification/spectral_patch_mae_mc_valid_defog_soft --cfg job > /dev/null
+          uv run python scripts/train.py experiment=pretraining/spectral_patch_mae_medcontext_daily --cfg job > /dev/null
 
       - name: Evaluation entrypoints parse (--help)
         run: |
+          uv run python -m data.process --help > /dev/null
           uv run python scripts/eval/eval_comprehensive.py --help > /dev/null
           uv run python scripts/eval/compute_icc_thresholds.py --help > /dev/null
           uv run python reproduce.py --help > /dev/null
 
       - name: Byte-compile core packages
-        run: uv run python -m compileall -q data model pipeline managers utils
+        run: uv run python -m compileall -q src
 
       - name: Run test suite
         run: uv run pytest tests/ -q

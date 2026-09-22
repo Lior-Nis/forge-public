@@ -37,7 +37,7 @@ import pywt
 
 # -- Paths -----------------------------------------------------------------------
 THIS = Path(__file__).resolve()
-REPO = THIS.parents[2]  # .../acc_base
+REPO = THIS.parents[2]
 OUT = REPO / "research" / "paper_final" / "figures"
 OUT.mkdir(parents=True, exist_ok=True)
 ZARR = REPO / "data" / "processed" / "len1000_stride200_kaggle.zarr"

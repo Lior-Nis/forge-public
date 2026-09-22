@@ -6,7 +6,7 @@ defaults:
   - override /model/signal_augmentor@model.signal_augmentor: default
   - override /model/transform@model.transform: raw
   - override /model/backbone@model.backbone: fogformer_no_dropout
-  - override /model/head@model.head: gru_binary_classification_light
+  - override /model/head@model.head: gru_binary_classification_heavy
   - override /train/optimizer@train.optimizer: adamw
   - override /train/scheduler@train.scheduler: cosine_restarts
   - override /train/loss@train.loss: focal_binary_bce

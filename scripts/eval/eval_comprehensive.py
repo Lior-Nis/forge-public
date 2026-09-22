@@ -8,20 +8,22 @@ Metrics: AUC, AP, Precision, Recall, Specificity, Accuracy, F1, NormAP, Lift.
 import argparse
 import logging
 import os
-from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import torch
+import yaml
 import zarr
 from sklearn.metrics import (
+    accuracy_score,
     average_precision_score,
     f1_score,
-    precision_score,
     precision_recall_curve,
+    precision_score,
     recall_score,
-    accuracy_score,
     roc_auc_score,
     roc_curve,
 )
@@ -30,6 +32,9 @@ os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 torch.set_float32_matmul_precision("high")
 
 logger = logging.getLogger(__name__)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RELEASE_MANIFEST = REPO_ROOT / "release" / "manifest.yaml"
+CACHE_FORMAT = "safetensors_valid"
 
 # ── Patient cohorts ────────────────────────────────────────────────────────────
 FOGATHOME_PATIENTS = [
@@ -40,6 +45,7 @@ DAILYLIVING_PATIENTS = [
     "c00001", "c00002", "c00004", "c00005", "c00006", "c00007",
     "c00010", "c00011", "c00012", "c00013", "c00014",
 ]
+STANFORD_PATIENTS = [f"s{n:05d}" for n in range(1, 8)]
 
 # ── Physical zarr filenames (relative to processed_dir) per (context, dataset) ──
 # Kaggle/DeFOG eval points at the physical .zarr directly and applies the
@@ -54,6 +60,8 @@ ZARR_NAME = {
     ("lc", "dailyliving"): "len1000_stride200_fogstride100_fogathome_dailyliving.zarr",
     ("mc", "dailyliving"): "len500_stride200_fogstride100_anyfog_fogathome_dailyliving.zarr",
     ("sc", "dailyliving"): "len200_stride20_fogstride10_anyfog_fogathome_dailyliving.zarr",
+    ("mc", "tdcsfog"):     "len500_stride200_fogstride100_anyfog_tdcs100.zarr",
+    ("mc", "stanford"):    "len500_stride200_stanford.zarr",
     ("lc", "kaggle"):      "len1000_stride200_fogstride100_kaggle.zarr",
     ("mc", "kaggle"):      "len500_stride200_fogstride100_anyfog_kaggle_defog.zarr",
     ("sc", "kaggle"):      "len200_stride20_fogstride10_anyfog_kaggle_defog.zarr",
@@ -75,64 +83,11 @@ def _open_zarr(zarr_path: str):
     if not Path(zarr_path).exists():
         raise FileNotFoundError(
             f"Eval zarr not found: {zarr_path}\n"
-            f"Build the evaluation zarrs first (scripts/shell/generate_medcontext_zarrs.sh / "
-            f"generate_shortcontext_zarrs.sh, or see the reproduction docs). Note: long-context "
-            f"(len1000) zarrs are NOT produced by the med/short-context scripts — pass "
-            f"--contexts mc (and/or sc) if you have not built the long-context zarrs."
+            "Build the evaluation zarrs first with `python -m data.process`; "
+            "see scripts/README.md or the reproduction docs for the command shape. "
+            "Only request contexts whose zarrs you have built."
         )
     return zarr.open_group(zarr_path, mode="r")
-
-# ── Released weights, and the configs that rebuild them ──────────────────────
-# The released FORGE model set: 3 contexts x 3 phases x 3 folds, trained on the
-# DeFOG participant-level 3-fold CV (57 participants), split configs
-# configs/data/splits/kaggle_labeled/kfold_defog_fogcount_valid_{ctx}{fold}.
-#
-# The release is weights-only (.safetensors): a model is rebuilt from the
-# EXPERIMENT config below and the released tensors are loaded into it. Nothing
-# from the training environment travels with a released file. Locally trained
-# Lightning checkpoints (.ckpt) still work — the SSL-ablation arms below are not
-# part of the public release and stay in that form.
-WEIGHTS_DIR = os.environ.get("FORGE_WEIGHTS_DIR", "release/forge-fog")
-
-CKPT = {
-    (ctx, phase): f"{WEIGHTS_DIR}/classification/{ctx}_{phase}_fold{{fold}}.safetensors"
-    for ctx in ("lc", "mc", "sc")
-    for phase in ("probe", "finetune", "supervised")
-}
-
-# Experiment config defining each released model's architecture. probe and
-# finetune share the SSL-initialised config (they differ only in optimiser and
-# whether the backbone is frozen — neither affects inference).
-EXPERIMENT = {
-    **{(ctx, phase): f"classification/spectral_patch_mae_{ctx}_valid_defog_soft"
-       for ctx in ("lc", "mc", "sc") for phase in ("probe", "finetune")},
-    **{(ctx, "supervised"): f"classification/supervised_{ctx}_fogr025_defog"
-       for ctx in ("lc", "mc", "sc")},
-}
-
-# DeFOG CV fold each head was trained on; supplies the held-out test participants
-# for the in-distribution evaluation.
-SPLITS = {
-    (ctx, fold): f"kaggle_labeled/kfold_defog_fogcount_valid_{ctx}{fold}"
-    for ctx in ("lc", "mc", "sc") for fold in range(3)
-}
-
-CKPT.update({
-    # SSL pretraining-objective ablation (frozen probe, same DeFOG splits). Same
-    # architecture/head/data/splits as the FORGE probe of the SAME context; only
-    # the pretrained encoder differs. The SSL encoders are LC-pretrained, so the
-    # context-matched comparison is LC vs FORGE 2D-MAE = ("lc","probe").
-    ("lc", "probe_ssl_simclr"): "checkpoints/classification/soft_probe_ssl_simclr_lc_all128_fold{fold}/last.ckpt",
-    ("lc", "probe_ssl_jepa"):   "checkpoints/classification/soft_probe_ssl_jepa_lc_all128_fold{fold}/last.ckpt",
-    ("lc", "probe_ssl_causal"): "checkpoints/classification/soft_probe_ssl_causal_lc_all128_fold{fold}/last.ckpt",
-    ("lc", "probe_ssl_mae1d"):  "checkpoints/classification/soft_probe_ssl_mae1d_lc_all128_fold{fold}/last.ckpt",
-    ("lc", "probe_ssl_random"): "checkpoints/classification/soft_probe_ssl_random_lc_all128_fold{fold}/last.ckpt",
-    # (MC-probed variants from the first pass kept for a cross-context check.)
-    ("mc", "probe_ssl_simclr"): "checkpoints/classification/soft_probe_ssl_simclr_all128_fold{fold}/last.ckpt",
-    ("mc", "probe_ssl_jepa"):   "checkpoints/classification/soft_probe_ssl_jepa_all128_fold{fold}/last.ckpt",
-    ("mc", "probe_ssl_causal"): "checkpoints/classification/soft_probe_ssl_causal_all128_fold{fold}/last.ckpt",
-    ("mc", "probe_ssl_mae1d"):  "checkpoints/classification/soft_probe_ssl_mae1d_all128_fold{fold}/last.ckpt",
-})
 
 # seq_len (frames) and stride (frames) for frame-level aggregation
 SEQ_LEN    = {"lc": 1000, "mc": 500, "sc": 200}
@@ -142,7 +97,6 @@ STRIDE_FR  = {"lc": 200,  "mc": 50,  "sc": 10}
 _BATCH_SCALE = float(os.environ.get("EVAL_BATCH_SCALE", "1.0"))
 BATCH_SIZE = {c: max(1, int(b * _BATCH_SCALE))
               for c, b in {"lc": 32, "mc": 128, "sc": 512}.items()}
-N_FOLDS    = 3
 THRESHOLDS = [0.0, 0.25, 0.50, 0.75, 1.0]
 
 # Decision-threshold protocol for F1/Recall/Precision/Specificity. Set in main().
@@ -160,11 +114,6 @@ CONTEXT_ENSEMBLES = [
     ("lc", "mc"),
     ("lc", "mc", "sc"),
 ]
-
-# Existing pred CSV locations (to reuse without re-running inference)
-FA_PRED_PAT = "logs/fogathome_eval/fogratio/{name}_fold{fold}_fogathome_preds.csv"
-DL_PRED_PAT = "logs/fogathome_dailyliving_eval/fogratio/{name}_fold{fold}_fogathome_dailyliving_preds.csv"
-
 
 # ── Zarr helpers ──────────────────────────────────────────────────────────────
 def load_zarr_arrays(zarr_path: str):
@@ -189,56 +138,48 @@ def load_zarr_arrays(zarr_path: str):
 
 
 # ── Inference ─────────────────────────────────────────────────────────────────
-def run_inference(context, model_type, dataset, fold, cache_dir: Path) -> pd.DataFrame:
+def released_members(context, model_type, dataset):
+    manifest = yaml.safe_load(RELEASE_MANIFEST.read_text())
+    entries = [e for e in manifest["classification"]
+               if e["context"] == context and e["phase"] == model_type]
+    if dataset == "kaggle":
+        entries = [e for e in entries if e["seed"] == 42]
+    if context == "mc" and model_type == "probe" and dataset != "kaggle":
+        expected = {(s, f) for s in (42, 43, 44) for f in range(3)}
+        actual = {(e["seed"], e["fold"]) for e in entries}
+        if actual != expected:
+            raise RuntimeError(f"Incomplete released ensemble: {sorted(actual)}")
+    invalid = [e["local"] for e in entries if Path(e["local"]).suffix != ".safetensors"]
+    if invalid:
+        raise ValueError(f"Released models must use .safetensors: {invalid}")
+    return sorted(({**e, "path": REPO_ROOT / e["local"]} for e in entries),
+                  key=lambda e: (e["seed"], e["fold"]))
+
+
+def run_inference(context, model_type, dataset, member, cache_dir: Path) -> pd.DataFrame:
     """Run inference for one (context, model_type, dataset, fold). Cached."""
-    name = f"{context}_{model_type}"
-
-    # --- Try existing pred CSVs first ---
-    if dataset == "fogathome":
-        existing = Path(FA_PRED_PAT.format(name=name, fold=fold))
-        if existing.exists():
-            return pd.read_csv(existing)
-    elif dataset == "dailyliving" and context in ("mc", "sc"):
-        existing = Path(DL_PRED_PAT.format(name=name, fold=fold))
-        if existing.exists():
-            return pd.read_csv(existing)
-
-    # --- Run new inference ---
+    fold = member["fold"]
+    seed = member["seed"]
     key = f"{dataset}_{context}_{model_type}"
-    pred_csv = cache_dir / f"{key}_fold{fold}_preds.csv"
+    weights_path = Path(member["path"])
+    if weights_path.suffix != ".safetensors":
+        raise ValueError(f"{weights_path}: released models must use .safetensors")
+    pred_csv = cache_dir / f"{key}_{weights_path.stem}_preds.csv"
+    if not weights_path.exists():
+        raise FileNotFoundError(f"Missing released weights: {weights_path}")
     if pred_csv.exists():
         return pd.read_csv(pred_csv)
 
-    zarr_path = ZARR[(context, dataset)]     # full path (for zarr.open_group)
     zarr_name = ZARR_NAME[(context, dataset)]  # filename only (for config override)
-    ckpt_path = CKPT[(context, model_type)].format(fold=fold)
-    if not Path(ckpt_path).exists():
-        logger.warning(f"Missing checkpoint: {ckpt_path}")
-        return pd.DataFrame()
+    logger.info(f"Running inference: {key} seed={seed} fold={fold}")
 
-    logger.info(f"Running inference: {key} fold={fold}")
-
-    from pipeline.classification import ClassificationPipeline
-    from data.datamodule.datamodule import FOGDataModule
     from data.datamodule.config import SplitsConfig
+    from data.datamodule.datamodule import FOGDataModule
     from utils.paths import normalize_data_paths
+    from utils.released_weights import load_released_model
 
-    # Released weights carry no config: rebuild the model from this repo's own
-    # experiment config. A locally trained .ckpt still carries its own.
-    released = ckpt_path.endswith(".safetensors")
-    if released:
-        from utils.released_weights import load_released_model
-
-        model, config = load_released_model(
-            ckpt_path,
-            EXPERIMENT[(context, model_type)],
-            overrides=[f"data/splits={SPLITS[(context, fold)]}"],
-        )
-        ckpt = None
-    else:
-        ckpt   = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-        config = ckpt["hyper_parameters"]["config"]
-        normalize_data_paths(config.data.paths)
+    model, config = load_released_model(weights_path)
+    normalize_data_paths(config.data.paths)
 
     # Determine patient filter
     if dataset == "fogathome":
@@ -246,6 +187,14 @@ def run_inference(context, model_type, dataset, fold, cache_dir: Path) -> pd.Dat
         splits_override = SplitsConfig(train=patients, val=[], test=patients)
     elif dataset == "dailyliving":
         patients = DAILYLIVING_PATIENTS
+        splits_override = SplitsConfig(train=patients, val=[], test=patients)
+    elif dataset == "stanford":
+        splits_override = SplitsConfig(train=STANFORD_PATIENTS, val=[], test=STANFORD_PATIENTS)
+    elif dataset == "tdcsfog":
+        from utils.zarr_helpers import read_zarr_metadata
+
+        metadata = read_zarr_metadata(ZARR[(context, dataset)], "/metadata")
+        patients = sorted(metadata["patient_id"].astype(str).unique().tolist())
         splits_override = SplitsConfig(train=patients, val=[], test=patients)
     else:
         # Kaggle: use original fold split (test = held-out Kaggle patients)
@@ -282,25 +231,6 @@ def run_inference(context, model_type, dataset, fold, cache_dir: Path) -> pd.Dat
     data_module = FOGDataModule(data_cfg=data_cfg, task_type=config.train.pipeline_type)
     data_module.setup("test")
 
-    if not released:
-        model      = ClassificationPipeline(config)
-        state_dict = ckpt["state_dict"]
-        # Resize patient normalizer buffers if cohort size differs
-        for key_sd in [
-            "preprocessors.preprocessors.3.normalizer.mean",
-            "preprocessors.preprocessors.3.normalizer.stdev",
-        ]:
-            if key_sd in state_dict:
-                saved_shape = state_dict[key_sd].shape
-                parts = key_sd.split(".")
-                mod = model
-                for part in parts[:-1]:
-                    mod = getattr(mod, part) if not part.isdigit() else mod[int(part)]
-                current = getattr(mod, parts[-1])
-                if current.shape != saved_shape:
-                    setattr(mod, parts[-1], torch.zeros(saved_shape))
-
-        model.load_state_dict(state_dict, strict=False)
     model.eval()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model  = model.to(device)
@@ -329,6 +259,7 @@ def run_inference(context, model_type, dataset, fold, cache_dir: Path) -> pd.Dat
                     "session_idx":  int(m.get("session_idx", -1)),
                     "pred_prob_fog": float(probs[i]),
                     "fold":         fold,
+                    "seed":         seed,
                 })
 
     df = pd.DataFrame(rows)
@@ -347,26 +278,26 @@ def run_inference(context, model_type, dataset, fold, cache_dir: Path) -> pd.Dat
 # ── Ensemble: average or concatenate fold preds ───────────────────────────────
 def build_ensemble(context, model_type, dataset, cache_dir: Path) -> pd.DataFrame:
     """Collect fold preds and return ensemble:
-    - FogAtHome/DailyLiving: same patients in all folds → mean prob per global_idx
+    - External cohorts: same patients in all folds → mean prob per global_idx
     - Kaggle: different test patients per fold → concatenate
     """
+    members = released_members(context, model_type, dataset)
+    if not members:
+        raise RuntimeError(
+            f"No released safetensors for context={context!r}, model={model_type!r}"
+        )
     fold_dfs = []
-    for fold in range(N_FOLDS):
-        df = run_inference(context, model_type, dataset, fold, cache_dir)
-        if df.empty:
-            continue
-        df["fold"] = fold
+    for member in members:
+        df = run_inference(context, model_type, dataset, member, cache_dir)
+        if df.empty or df["global_idx"].duplicated().any():
+            raise RuntimeError(f"Invalid predictions for seed={member['seed']} fold={member['fold']}")
+        df["fold"] = member["fold"]
         fold_dfs.append(df)
 
     if not fold_dfs:
         return pd.DataFrame()
 
     combined = pd.concat(fold_dfs, ignore_index=True)
-
-    # Old cached pred CSVs (from external eval scripts) lack session_idx; placeholder
-    # is fine since build_frame_df recomputes it from zarr metadata anyway.
-    if "session_idx" not in combined.columns:
-        combined["session_idx"] = -1
 
     if dataset == "kaggle":
         # Each fold has distinct test patients → no averaging needed
@@ -378,6 +309,9 @@ def build_ensemble(context, model_type, dataset, cache_dir: Path) -> pd.DataFram
         ).reset_index()
     else:
         # Average across folds for same-cohort evals
+        counts = combined.groupby("global_idx").size()
+        if not (counts == len(members)).all():
+            raise RuntimeError("Released ensemble members produced different prediction rows")
         return combined.groupby("global_idx").agg(
             patient_id=("patient_id", "first"),
             session_id=("session_id", "first"),
@@ -406,6 +340,8 @@ def resolve_threshold(y_true, y_score, context, model_type, cache_dir) -> float:
     the held-out DeFOG (kaggle) frame parquet and reused; falls back to test_pr11 if
     that parquet is absent (e.g. context ensembles not yet built).
     """
+    if THRESHOLD_SOURCE == "fixed_035":
+        return 0.35
     if THRESHOLD_SOURCE == "test_youden":
         return youden_threshold(y_true, y_score)
     if THRESHOLD_SOURCE == "test_pr11":
@@ -413,7 +349,7 @@ def resolve_threshold(y_true, y_score, context, model_type, cache_dir) -> float:
     if THRESHOLD_SOURCE == "defog_val_pr11":
         key = (context, model_type)
         if key not in _VAL_THR_CACHE:
-            p = Path(cache_dir) / f"kaggle_{context}_{model_type}_frames.parquet"
+            p = Path(cache_dir) / f"kaggle_{context}_{model_type}_{CACHE_FORMAT}_frames.parquet"
             if p.exists():
                 d = pd.read_parquet(p)
                 _VAL_THR_CACHE[key] = pr11_threshold(
@@ -460,16 +396,22 @@ def compute_metrics(y_true: np.ndarray, y_score: np.ndarray, prevalence: float =
 
 # ── Frame-level aggregation (vectorized per session) ─────────────────────────
 def build_frame_df(ensemble: pd.DataFrame, zarr_path: str, context: str,
-                   frame_cache: Path) -> pd.DataFrame:
+                   frame_cache: Path,
+                   eligible_intervals: dict[str, np.ndarray] | None = None) -> pd.DataFrame:
     """Aggregate patch predictions to per-frame predictions.
     Stores fog_ratio (mean of overlapping patch fog_ratios) and native_label
     (majority vote of zarr binary annotations) per covered frame."""
+    # Daily-living eligibility comes from a versioned public sidecar. Rebuild its
+    # inexpensive frame aggregation so a stale, unfiltered cache cannot be reused.
+    if eligible_intervals is not None and frame_cache.exists():
+        frame_cache.unlink()
+
     # Invalidate cache if native_label column is missing (older cache format)
     if frame_cache.exists():
         try:
-            cols = pd.read_parquet(frame_cache).columns.tolist()
+            cols = pq.ParquetFile(frame_cache).schema_arrow.names
             if "native_label" in cols:
-                return pd.read_parquet(frame_cache)
+                return _read_frame_cache(frame_cache)
             frame_cache.unlink()
             logger.info(f"  Rebuilding frame cache (adding native_label): {frame_cache.name}")
         except Exception:
@@ -482,6 +424,7 @@ def build_frame_df(ensemble: pd.DataFrame, zarr_path: str, context: str,
     fog_ratios_all = z["patch_labels"][:]   # (N_patches,) float32
     has_labels     = "labels" in z
     labels_all     = z["labels"][:] if has_labels else None  # (N_patches, seq_len) int8/int32
+    valid_masks_all = z["valid_masks"][:] if "valid_masks" in z else None
     meta           = z["metadata"]
     all_gidx       = meta["global_idx"][:]
     all_sidx       = meta["session_idx"][:]
@@ -529,70 +472,118 @@ def build_frame_df(ensemble: pd.DataFrame, zarr_path: str, context: str,
     valid = (ens["_sidx"] >= 0) & (ens["_pat"] != "")
     ens   = ens[valid]
 
-    all_pats_out   = []
-    all_sids_out   = []
-    all_frames     = []
-    all_probs      = []
-    all_fogrs      = []
-    all_natives    = [] if has_labels else None
     offsets = np.arange(seq_len, dtype=np.int64)
+    frame_cache.parent.mkdir(parents=True, exist_ok=True)
+    temp_cache = frame_cache.with_suffix(frame_cache.suffix + ".tmp")
+    temp_cache.unlink(missing_ok=True)
+    writer = None
+    total_frames = 0
+    try:
+        for (pat, sid), grp in ens.groupby(["_pat", "_sid"], sort=False):
+            sidxs  = grp["_sidx"].values.astype(np.int64)
+            probs  = grp["pred_prob_fog"].values.astype(np.float32)
+            fogrs  = grp["_fogr"].values.astype(np.float32)
+            raw_starts = grp["_start"].values.astype(np.int64)
+            # Use actual frame starts if available; fall back to session_idx * stride for old zarrs
+            starts = raw_starts if has_start_frame and (raw_starts >= 0).all() else sidxs * stride
+            n_frames = int(starts.max()) + seq_len
 
-    for (pat, sid), grp in ens.groupby(["_pat", "_sid"], sort=False):
-        sidxs  = grp["_sidx"].values.astype(np.int64)
-        probs  = grp["pred_prob_fog"].values.astype(np.float32)
-        fogrs  = grp["_fogr"].values.astype(np.float32)
-        raw_starts = grp["_start"].values.astype(np.int64)
-        # Use actual frame starts if available; fall back to session_idx * stride for old zarrs
-        starts = raw_starts if has_start_frame and (raw_starts >= 0).all() else sidxs * stride
-        n_frames = int(starts.max()) + seq_len
+            frame_mat = (starts[:, None] + offsets[None, :]).flatten()  # (K*seq_len,)
+            prob_vals = np.repeat(probs, seq_len).astype(np.float64)
+            fogr_vals = np.repeat(fogrs, seq_len).astype(np.float64)
 
-        frame_mat = (starts[:, None] + offsets[None, :]).flatten()  # (K*seq_len,)
-        prob_vals = np.repeat(probs, seq_len).astype(np.float64)
-        fogr_vals = np.repeat(fogrs, seq_len).astype(np.float64)
+            prob_sum = np.bincount(frame_mat, weights=prob_vals, minlength=n_frames)
+            fogr_sum = np.bincount(frame_mat, weights=fogr_vals, minlength=n_frames)
+            count    = np.bincount(frame_mat, minlength=n_frames)
 
-        prob_sum = np.bincount(frame_mat, weights=prob_vals, minlength=n_frames)
-        fogr_sum = np.bincount(frame_mat, weights=fogr_vals, minlength=n_frames)
-        count    = np.bincount(frame_mat, minlength=n_frames)
+            if valid_masks_all is not None:
+                zpos = grp["_zpos"].values
+                valid_sum = np.bincount(
+                    frame_mat,
+                    weights=valid_masks_all[zpos, :].astype(np.float64).flatten(),
+                    minlength=n_frames,
+                )
 
-        if has_labels:
-            zpos = grp["_zpos"].values  # (K,) zarr positions
-            # Binarize: label > 0 → fog (matches fog_ratio computation in steps.py)
-            patch_labs = (labels_all[zpos, :] > 0).astype(np.float64)  # (K, seq_len)
-            native_vals = patch_labs.flatten()
-            native_sum  = np.bincount(frame_mat, weights=native_vals, minlength=n_frames)
+            if has_labels:
+                zpos = grp["_zpos"].values  # (K,) zarr positions
+                # Binarize: label > 0 → fog (matches fog_ratio computation in steps.py)
+                patch_labs = (labels_all[zpos, :] > 0).astype(np.float64)  # (K, seq_len)
+                native_vals = patch_labs.flatten()
+                native_sum  = np.bincount(frame_mat, weights=native_vals, minlength=n_frames)
 
-        covered = count > 0
-        f_idxs  = np.where(covered)[0]
-        n = len(f_idxs)
-        all_pats_out.append(np.full(n, pat, dtype=object))
-        all_sids_out.append(np.full(n, sid, dtype=object))
-        all_frames.append(f_idxs.astype(np.int32))
-        all_probs.append((prob_sum[covered] / count[covered]).astype(np.float32))
-        all_fogrs.append((fogr_sum[covered] / count[covered]).astype(np.float32))
-        if has_labels:
-            # Round majority vote: frame is FoG if majority of overlapping patch frames say so
-            native_frac = native_sum[covered] / count[covered]
-            all_natives.append(np.round(native_frac).astype(np.int8))
+            covered = count > 0
+            if valid_masks_all is not None:
+                covered &= valid_sum > 0
+            f_idxs = np.where(covered)[0]
+            if eligible_intervals is not None:
+                intervals = eligible_intervals.get(str(sid))
+                if intervals is None:
+                    continue
+                eligible = np.zeros(len(f_idxs), dtype=bool)
+                for start, end in intervals:
+                    eligible |= (f_idxs >= start) & (f_idxs < end)
+                f_idxs = f_idxs[eligible]
+            n = len(f_idxs)
+            if n == 0:
+                continue
 
-    if not all_frames:
+            part = {
+                "patient_id": np.full(n, pat, dtype=object),
+                "session_id": np.full(n, sid, dtype=object),
+                "abs_frame": f_idxs.astype(np.int32),
+                "pred_prob_fog": (prob_sum[f_idxs] / count[f_idxs]).astype(np.float32),
+                "fog_ratio": (fogr_sum[f_idxs] / count[f_idxs]).astype(np.float32),
+            }
+            if has_labels:
+                # Round majority vote: frame is FoG if majority of overlapping patch frames say so
+                native_frac = native_sum[f_idxs] / count[f_idxs]
+                part["native_label"] = np.round(native_frac).astype(np.int8)
+
+            table = pa.Table.from_pydict(part)
+            if writer is None:
+                writer = pq.ParquetWriter(temp_cache, table.schema)
+            writer.write_table(table)
+            total_frames += n
+    except BaseException:
+        if writer is not None:
+            writer.close()
+        temp_cache.unlink(missing_ok=True)
+        raise
+    else:
+        if writer is not None:
+            writer.close()
+
+    if writer is None:
         return pd.DataFrame(columns=["patient_id","session_id","abs_frame",
                                      "pred_prob_fog","fog_ratio","native_label"])
 
-    out = {
-        "patient_id":    np.concatenate(all_pats_out),
-        "session_id":    np.concatenate(all_sids_out),
-        "abs_frame":     np.concatenate(all_frames),
-        "pred_prob_fog": np.concatenate(all_probs),
-        "fog_ratio":     np.concatenate(all_fogrs),
-    }
-    if has_labels:
-        out["native_label"] = np.concatenate(all_natives)
+    temp_cache.replace(frame_cache)
+    logger.info(f"Frame df: {total_frames} frames → {frame_cache}")
+    return _read_frame_cache(frame_cache)
 
-    df = pd.DataFrame(out)
-    frame_cache.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(frame_cache, index=False)
-    logger.info(f"Frame df: {len(df)} frames → {frame_cache}")
-    return df
+
+def _read_frame_cache(path: Path) -> pd.DataFrame:
+    """Read a frame cache while keeping repeated cohort IDs compact in memory."""
+    frame = pd.read_parquet(path)
+    for column in ("patient_id", "session_id"):
+        if column in frame:
+            frame[column] = frame[column].astype("category")
+    return frame
+
+
+def _daily_living_eligible_intervals() -> dict[str, np.ndarray]:
+    """Load public walking/standing intervals used by the manuscript evaluation."""
+    path = REPO_ROOT / "data" / "raw" / "fogathome_dailyliving" / "activity.parquet"
+    if not path.exists():
+        raise FileNotFoundError(f"Missing daily-living Activity sidecar: {path}")
+    activity = pd.read_parquet(
+        path, columns=["session_id", "start_frame", "end_frame", "Activity"]
+    )
+    activity = activity[activity["Activity"].isin({1, 4})]
+    return {
+        str(session_id): rows[["start_frame", "end_frame"]].to_numpy(dtype=np.int64)
+        for session_id, rows in activity.groupby("session_id", sort=False)
+    }
 
 
 # ── Context-level ensemble helpers ───────────────────────────────────────────
@@ -606,7 +597,7 @@ def build_context_ensemble_frame_df(
     Returns empty DataFrame if any required frame parquet is missing.
     """
     ctx_str = "+".join(contexts)
-    ens_cache = cache_dir / f"{dataset}_{ctx_str}_{model_type}_frames.parquet"
+    ens_cache = cache_dir / f"{dataset}_{ctx_str}_{model_type}_{CACHE_FORMAT}_frames.parquet"
     if ens_cache.exists():
         try:
             return pd.read_parquet(ens_cache)
@@ -618,7 +609,7 @@ def build_context_ensemble_frame_df(
 
     merged = None
     for ctx in contexts:
-        fp = cache_dir / f"{dataset}_{ctx}_{model_type}_frames.parquet"
+        fp = cache_dir / f"{dataset}_{ctx}_{model_type}_{CACHE_FORMAT}_frames.parquet"
         if not fp.exists():
             logger.warning(f"Missing frame parquet for {dataset}_{ctx}_{model_type}; ensemble skipped")
             return pd.DataFrame()
@@ -688,10 +679,10 @@ def eval_context_ensemble(contexts: tuple, model_type: str, dataset: str, cache_
 
 # ── Main evaluation loop ──────────────────────────────────────────────────────
 def eval_one(dataset, context, model_type, cache_dir: Path) -> list:
-    logger.info(f"  ensemble …")
+    logger.info("  ensemble …")
     ensemble = build_ensemble(context, model_type, dataset, cache_dir)
     if ensemble.empty:
-        logger.warning(f"  No predictions — skipping.")
+        logger.warning("  No predictions — skipping.")
         return []
 
     zarr_path = ZARR[(context, dataset)]
@@ -723,10 +714,13 @@ def eval_one(dataset, context, model_type, cache_dir: Path) -> list:
 
     # ── Frame level ────────────────────────────────────────────────────────
     model_key  = f"{dataset}_{context}_{model_type}"
-    frame_cache = cache_dir / f"{model_key}_frames.parquet"
+    frame_cache = cache_dir / f"{model_key}_{CACHE_FORMAT}_frames.parquet"
     try:
-        logger.info(f"  frame aggregation …")
-        frame_df = build_frame_df(ensemble, zarr_path, context, frame_cache)
+        logger.info("  frame aggregation …")
+        eligible_intervals = _daily_living_eligible_intervals() if dataset == "dailyliving" else None
+        frame_df = build_frame_df(
+            ensemble, zarr_path, context, frame_cache, eligible_intervals=eligible_intervals
+        )
     except Exception as e:
         logger.error(f"  Frame aggregation failed: {e}")
         frame_df = pd.DataFrame()
@@ -760,11 +754,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output",    default="logs/comprehensive_eval.csv")
     parser.add_argument("--cache-dir", default="logs/comprehensive_eval_cache")
-    parser.add_argument("--datasets",  nargs="+", default=["kaggle", "fogathome", "dailyliving"])
+    parser.add_argument(
+        "--datasets",
+        nargs="+",
+        default=["fogathome", "tdcsfog", "dailyliving", "stanford"],
+        choices=["kaggle", "fogathome", "tdcsfog", "dailyliving", "stanford"],
+    )
     parser.add_argument("--contexts",  nargs="+", default=["lc", "mc", "sc"])
     parser.add_argument("--models",    nargs="+", default=["probe", "finetune", "supervised"])
     parser.add_argument("--threshold-source", default="test_youden",
-                        choices=["test_youden", "test_pr11", "defog_val_pr11"],
+                        choices=["fixed_035", "test_youden", "test_pr11", "defog_val_pr11"],
                         help="Decision-threshold protocol for F1/Recall/Precision/Specificity. "
                              "defog_val_pr11 = held-out DeFOG PR-(1,1), applied to external sets "
                              "(no test peeking). Requires kaggle frame parquets to exist first.")

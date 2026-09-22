@@ -6,7 +6,7 @@ One self-contained, idempotent driver that:
   2. downloads the evaluation datasets (HF: Liornis/fog-dataset)
   3. builds the evaluation zarrs       (data.process)
   4. runs the evaluation               (eval_comprehensive.py)
-  5. computes the clinical ICC table   (compute_icc_thresholds.py)
+  5. scores the four external cohorts  (eval_external_cohorts.py)
 
 It is pure Python on purpose: no `source activate`, no symlinks, no shell
 globs -- so it runs identically on Linux, macOS, and Windows. The single
@@ -16,8 +16,7 @@ reads it and mirrors the commands documented in the `onboard-repo` and
 
 Quick start from a bare clone (the wrappers run `uv sync` first):
 
-    ./reproduce.sh                        # Linux/macOS  -- headline MC: seg AUC 0.908, AP 0.823, ICC 0.909
-    ./reproduce.sh --full                 # full paper table (all contexts x models, ~100+ GB)
+    ./reproduce.sh                        # Linux/macOS: all four external cohorts
     reproduce.bat                         # Windows (cmd/PowerShell); WSL2 + ./reproduce.sh is more reliable
 
 If the environment is already provisioned, run the module directly:
@@ -25,26 +24,31 @@ If the environment is already provisioned, run the module directly:
     uv run python reproduce.py [flags]    # same flags as the wrappers
 
 Useful flags:
-    --contexts mc sc            # restrict contexts
-    --datasets fogathome kaggle # restrict datasets
-    --models probe              # restrict models
-    --skip-download             # weights/data already present
-    --skip-zarr                 # zarrs already built
-    --no-icc                    # skip the clinical ICC step
-    --batch-scale 0.25          # smaller inference batches for low-VRAM GPUs (results unchanged)
+    --datasets fogathome stanford  # optionally restrict external cohorts
+    --verify-assets-only           # check public release packaging, then exit
+    --skip-download               # weights/data already present
+    --skip-zarr                   # zarrs already built
+    --no-score                    # run inference without the metric/check step
+    --batch-scale 0.25            # smaller batches for low-VRAM GPUs
 
-Evaluation is inference-only and reproduces bit-identically from the released
-artifacts (verified 2026-06-22); a GPU is recommended but not required.
+Evaluation is inference-only. A GPU is recommended but not required.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
-import re
+import platform
 import shutil
 import subprocess
 import sys
+import tempfile
+import time
+import urllib.request
+import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -54,6 +58,9 @@ RAW_DIR = REPO_ROOT / "data" / "raw"
 PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 LOGS_DIR = REPO_ROOT / "logs"
 CACHE_DIR = LOGS_DIR / "comprehensive_eval_cache"
+DEFAULT_DATASETS = ("fogathome", "tdcsfog", "dailyliving", "stanford")
+STANFORD_REPOSITORY = "stanfordnmbl/imu-fog-detection"
+STANFORD_REVISION = "e95687842801ca3565463486a50d562fff44d182"
 
 # Windows: the console code page is often a legacy locale (e.g. Hebrew cp1255)
 # that cannot encode the arrows/symbols (→, ×, …) our eval/build scripts print,
@@ -73,58 +80,25 @@ if os.name == "nt":
 DATASET_SUBDIR = {
     "fogathome": "fogathome",
     "dailyliving": "fogathome_dailyliving",
-    "kaggle": "kaggle_labeled",
+    "tdcsfog": "kaggle_labeled/tdcsfog",
 }
 
-# Model CLI names; these are also the manifest `phase` values and the
-# eval_comprehensive.py CKPT model keys -- one namespace, no translation.
-MODELS = ("probe", "finetune", "supervised")
-
-# Authoritative zarr-build recipes, mirrored from the committed
-# scripts/shell/generate_{med,short}context_zarrs.sh. Each maps an eval dataset
-# key to its (paths, process) Hydra config pair. The kaggle_daily (unlabeled,
-# 64 GB) pretraining build is intentionally excluded -- eval does not need it.
-BUILD_RECIPES = {
-    "mc": {
-        "process": "kaggle_medcontext",
-        "paths": {
-            "kaggle": "kaggle_defog_medcontext",
-            "fogathome": "fogathome_medcontext",
-            "dailyliving": "fogathome_dailyliving_medcontext",
-        },
-    },
-    "sc": {
-        "process": "kaggle_shortcontext",
-        "paths": {
-            "kaggle": "kaggle_defog_shortcontext",
-            "fogathome": "fogathome_shortcontext",
-            "dailyliving": "fogathome_dailyliving_shortcontext",
-        },
-    },
-    # No committed build script exists for long context, and the kaggle-LC
-    # paths config is ambiguous; only the derivable fogathome/dailyliving
-    # builds are wired. kaggle-LC must be built manually if needed for --full.
-    "lc": {
-        "process": "kaggle_longcontext",
-        "paths": {
-            "fogathome": "fogathome_longcontext",
-            "dailyliving": "fogathome_dailyliving_longcontext",
-        },
+BUILD_RECIPE = {
+    "process": "kaggle_medcontext",
+    "paths": {
+        "fogathome": "fogathome_medcontext",
+        "dailyliving": "fogathome_dailyliving_medcontext",
+        "tdcsfog": "kaggle_tdcs100",
     },
 }
 
 # Target eval zarr filenames, mirrored from scripts/eval/eval_comprehensive.py
 # (ZARR_NAME). Used to verify a build produced what the eval expects.
 ZARR_NAME = {
-    ("lc", "fogathome"): "len1000_stride200_fogstride100_fogathome.zarr",
     ("mc", "fogathome"): "len500_stride200_fogstride100_fogathome.zarr",
-    ("sc", "fogathome"): "len200_stride20_fogstride10_fogathome.zarr",
-    ("lc", "dailyliving"): "len1000_stride200_fogstride100_fogathome_dailyliving.zarr",
     ("mc", "dailyliving"): "len500_stride200_fogstride100_anyfog_fogathome_dailyliving.zarr",
-    ("sc", "dailyliving"): "len200_stride20_fogstride10_anyfog_fogathome_dailyliving.zarr",
-    ("lc", "kaggle"): "len1000_stride200_fogstride100_kaggle.zarr",
-    ("mc", "kaggle"): "len500_stride200_fogstride100_anyfog_kaggle_defog.zarr",
-    ("sc", "kaggle"): "len200_stride20_fogstride10_anyfog_kaggle_defog.zarr",
+    ("mc", "tdcsfog"): "len500_stride200_fogstride100_anyfog_tdcs100.zarr",
+    ("mc", "stanford"): "len500_stride200_stanford.zarr",
 }
 
 
@@ -171,6 +145,165 @@ def run(cmd: list[str], env: dict | None = None) -> None:
         die(f"command failed (exit {proc.returncode}): {' '.join(cmd)}")
 
 
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _released_artifacts(manifest: dict) -> list[dict]:
+    """Return every model artifact referenced by the release manifest."""
+    return [*manifest["encoders"].values(), *manifest["classification"]]
+
+
+def verify_public_assets(manifest: dict, datasets: list[str]) -> None:
+    """Verify the pinned public release contract without downloading large assets."""
+    from huggingface_hub import HfApi, hf_hub_download
+
+    api = HfApi()
+    weights_repo = manifest["meta"]["hf_weights_repo"]
+    weights_revision = manifest["meta"]["hf_weights_revision"]
+    dataset_repo = manifest["meta"]["hf_dataset_repo"]
+    dataset_revision = manifest["meta"]["hf_dataset_revision"]
+
+    log(f"Checking HF model repo: {weights_repo} @ {weights_revision}")
+    remote_weights = set(
+        api.list_repo_files(weights_repo, repo_type="model", revision=weights_revision)
+    )
+    expected_weights = {
+        artifact["hf_path"] for artifact in _released_artifacts(manifest)
+    }
+    absent_weights = sorted(expected_weights - remote_weights)
+    if absent_weights:
+        die(f"HF model revision is missing released artifacts: {absent_weights}")
+
+    checksum_file = hf_hub_download(
+        repo_id=weights_repo,
+        filename="checksums.json",
+        repo_type="model",
+        revision=weights_revision,
+    )
+    records = json.loads(Path(checksum_file).read_text())
+    checksum_paths = {record["hf_path"] for record in records}
+    missing_checksums = sorted(expected_weights - checksum_paths)
+    if missing_checksums:
+        die(f"checksums.json does not cover released artifacts: {missing_checksums}")
+    malformed = sorted(
+        record.get("hf_path", "<missing>")
+        for record in records
+        if len(record.get("sha256", "")) != 64
+    )
+    if malformed:
+        die(f"checksums.json contains malformed SHA-256 records: {malformed}")
+    log(
+        "Verified presence and checksum coverage for all "
+        f"{len(expected_weights)} model artifacts"
+    )
+
+    hf_datasets = [dataset for dataset in datasets if dataset in DATASET_SUBDIR]
+    if hf_datasets:
+        log(f"Checking HF dataset repo: {dataset_repo} @ {dataset_revision}")
+        remote_data = set(
+            api.list_repo_files(
+                dataset_repo,
+                repo_type="dataset",
+                revision=dataset_revision,
+            )
+        )
+        missing_prefixes = [
+            DATASET_SUBDIR[dataset]
+            for dataset in hf_datasets
+            if not any(
+                path.startswith(f"{DATASET_SUBDIR[dataset]}/")
+                for path in remote_data
+            )
+        ]
+        if missing_prefixes:
+            die(f"HF dataset revision is missing required directories: {missing_prefixes}")
+        if "dailyliving" in datasets:
+            sidecar = manifest["datasets"]["dailyliving"]["activity_sidecar"]
+            if sidecar not in remote_data:
+                die(f"HF dataset revision is missing daily-living sidecar: {sidecar}")
+        log(f"Verified public files for: {', '.join(hf_datasets)}")
+
+    if "stanford" in datasets:
+        stanford = manifest["datasets"]["stanford"]
+        url = f"{stanford['source']}/archive/{stanford['revision']}.zip"
+        request = urllib.request.Request(url, method="HEAD")
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                if response.status >= 400:
+                    die(f"Stanford release returned HTTP {response.status}: {url}")
+        except OSError as exc:
+            die(f"Stanford pinned revision is not reachable: {url} ({exc})")
+        log(f"Verified Stanford source revision: {stanford['revision']}")
+
+
+def _git_revision() -> str | None:
+    proc = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return proc.stdout.strip() if proc.returncode == 0 else None
+
+
+def _environment_record() -> dict:
+    import torch
+
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = f"cuda:{torch.cuda.get_device_name(0)}"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        device = "mps"
+    return {
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "pytorch": torch.__version__,
+        "cuda_runtime": torch.version.cuda,
+        "device": device,
+    }
+
+
+def write_run_record(
+    manifest: dict,
+    datasets: list[str],
+    started_at: datetime,
+    elapsed_seconds: float,
+    status: str,
+) -> Path:
+    """Write enough provenance to compare runs from independent machines."""
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    record = {
+        "status": status,
+        "started_at": started_at.isoformat(),
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "elapsed_seconds": round(elapsed_seconds, 3),
+        "command": [sys.executable, *sys.argv],
+        "git_revision": _git_revision(),
+        "hf_weights_repo": manifest["meta"]["hf_weights_repo"],
+        "hf_weights_revision": manifest["meta"]["hf_weights_revision"],
+        "hf_dataset_repo": manifest["meta"]["hf_dataset_repo"],
+        "hf_dataset_revision": manifest["meta"]["hf_dataset_revision"],
+        "datasets": datasets,
+        "environment": _environment_record(),
+    }
+    results = LOGS_DIR / "RESULTS_external.csv"
+    if status == "completed" and results.exists():
+        import pandas as pd
+
+        rows = pd.read_csv(results)
+        record["results"] = rows[rows["dataset"].isin(datasets)].to_dict(
+            orient="records"
+        )
+    output = LOGS_DIR / "reproduction_run.json"
+    output.write_text(json.dumps(record, indent=2, default=str) + "\n")
+    return output
+
+
 # --------------------------------------------------------------------------- #
 # steps
 # --------------------------------------------------------------------------- #
@@ -193,24 +326,49 @@ def download_weights(manifest: dict, contexts: list[str], phases: set[str]) -> N
     from huggingface_hub import hf_hub_download
 
     repo = manifest["meta"]["hf_weights_repo"]
-    log(f"Downloading weights from HF model repo: {repo}")
+    revision = manifest["meta"].get("hf_weights_revision")
+    log(f"Downloading weights from HF model repo: {repo} @ {revision}")
 
-    # Classification weights only. Each released head already contains its
-    # encoder, so encoders/*.safetensors are needed only to train new heads.
+    # encoders for the contexts in use (probe/finetune reload these at build time)
     wanted = []
+    for ctx in contexts:
+        enc = manifest["encoders"].get(ctx)
+        if enc:
+            wanted.append((enc["hf_path"], enc["local"]))
+    # classifiers matching (context, phase)
     for entry in manifest["classification"]:
         if entry["context"] in contexts and entry["phase"] in phases:
             wanted.append((entry["hf_path"], entry["local"]))
 
     for hf_path, local in wanted:
+        if Path(hf_path).suffix != ".safetensors" or Path(local).suffix != ".safetensors":
+            die(f"release manifest contains non-safetensors weights: {hf_path} -> {local}")
         local_path = REPO_ROOT / local
         if local_path.exists():
             log(f"  exists, skip: {local}")
             continue
-        cached = hf_hub_download(repo_id=repo, filename=hf_path, repo_type="model")
+        cached = hf_hub_download(repo_id=repo, filename=hf_path, repo_type="model",
+                                 revision=revision)
         local_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(cached, local_path)
         log(f"  placed: {hf_path} -> {local}")
+
+    checksum_file = hf_hub_download(
+        repo_id=repo,
+        filename="checksums.json",
+        repo_type="model",
+        revision=revision,
+    )
+    records = json.loads(Path(checksum_file).read_text())
+    checksums = {record["hf_path"]: record["sha256"] for record in records}
+    missing = [hf_path for hf_path, _ in wanted if hf_path not in checksums]
+    if missing:
+        die(f"checksums.json does not cover released files: {missing}")
+    for hf_path, local in wanted:
+        actual = sha256(REPO_ROOT / local)
+        if actual != checksums[hf_path]:
+            die(f"checksum mismatch for {hf_path}: expected {checksums[hf_path]}, got {actual}")
+    log(f"Verified SHA-256 for all {len(wanted)} downloaded model artifacts")
 
 
 def download_datasets(manifest: dict, datasets: list[str]) -> None:
@@ -218,10 +376,11 @@ def download_datasets(manifest: dict, datasets: list[str]) -> None:
     from huggingface_hub.utils import get_token
 
     repo = manifest["meta"]["hf_dataset_repo"]
-    subdirs = sorted({DATASET_SUBDIR[d] for d in datasets})
+    revision = manifest["meta"].get("hf_dataset_revision")
+    subdirs = sorted({DATASET_SUBDIR[d] for d in datasets if d in DATASET_SUBDIR})
     # recursive globs: kaggle_labeled/* would silently skip nested session data
     patterns = [f"{s}/**" for s in subdirs]
-    log(f"Downloading dataset splits {subdirs} from HF dataset repo: {repo}")
+    log(f"Downloading dataset splits {subdirs} from HF dataset repo: {repo} @ {revision}")
     if get_token() is None:
         warn("No HF token found. The dataset has many small per-session files; "
              "anonymous pulls can hit HTTP 429 rate limits (retried automatically, "
@@ -229,41 +388,76 @@ def download_datasets(manifest: dict, datasets: list[str]) -> None:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     # max_workers kept modest: fewer concurrent requests => far fewer 429s on the
     # many small CSVs. snapshot_download retries 429s with backoff regardless.
-    snapshot_download(
-        repo_id=repo,
-        repo_type="dataset",
-        allow_patterns=patterns,
-        local_dir=str(RAW_DIR),
-        max_workers=4,
-    )
+    if patterns:
+        snapshot_download(
+            repo_id=repo,
+            repo_type="dataset",
+            revision=revision,
+            allow_patterns=patterns,
+            local_dir=str(RAW_DIR),
+            max_workers=4,
+        )
     log(f"  datasets in {RAW_DIR}")
+    if "stanford" in datasets:
+        download_stanford()
+
+
+def download_stanford() -> None:
+    """Download the public O'Day dataset from its authoritative GitHub repository."""
+    target = RAW_DIR / "stanford_imu_fog"
+    expected = target / "data" / "raw" / "imus6_subjects7"
+    if expected.exists() and any(expected.glob("*.xlsx")):
+        log(f"  exists, skip: {target.relative_to(REPO_ROOT)}")
+        return
+    if target.exists():
+        die(f"incomplete Stanford download at {target}; remove that directory and retry")
+
+    url = (
+        f"https://github.com/{STANFORD_REPOSITORY}/archive/"
+        f"{STANFORD_REVISION}.zip"
+    )
+    log(f"Downloading Stanford O'Day dataset @ {STANFORD_REVISION}")
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="forge-stanford-") as temporary:
+        archive = Path(temporary) / "stanford.zip"
+        urllib.request.urlretrieve(url, archive)
+        with zipfile.ZipFile(archive) as handle:
+            handle.extractall(temporary)
+        extracted = Path(temporary) / f"imu-fog-detection-{STANFORD_REVISION}"
+        if not extracted.exists():
+            die("Stanford archive did not contain the expected repository directory")
+        shutil.move(str(extracted), target)
 
 
 def build_zarrs(contexts: list[str], datasets: list[str]) -> None:
     log("Building evaluation zarrs")
     for ctx in contexts:
-        recipe = BUILD_RECIPES.get(ctx)
-        if recipe is None:
-            warn(f"no build recipe for context '{ctx}' -- skipping")
-            continue
+        if ctx != "mc":
+            die(f"External reproduction supports only the released MC detector, not {ctx!r}")
         for ds in datasets:
             target = ZARR_NAME.get((ctx, ds))
             if target and (PROCESSED_DIR / target).exists():
                 log(f"  exists, skip: {ctx}/{ds} ({target})")
                 continue
-            paths_cfg = recipe["paths"].get(ds)
-            if paths_cfg is None:
-                warn(
-                    f"no automated build for {ctx}/{ds}; build it manually, e.g.\n"
-                    f"    uv run python -m data.process paths=<cfg> process={recipe['process']}\n"
-                    f"  (expected output: data/processed/{target})"
-                )
+            if ds == "stanford":
+                if ctx != "mc":
+                    die("Stanford reproduction supports only the released MC detector")
+                run([sys.executable, "scripts/data/build_stanford_zarr.py"])
                 continue
+            if ds == "tdcsfog":
+                if ctx != "mc":
+                    die("tDCS-FOG reproduction supports only the released MC detector")
+                resampled = RAW_DIR / "kaggle_tdcs100" / "tdcsfog" / "sessions"
+                if not resampled.exists() or not any(resampled.glob("*.csv")):
+                    run([sys.executable, "scripts/data/resample_tdcsfog_100hz.py"])
+            paths_cfg = BUILD_RECIPE["paths"].get(ds)
+            if paths_cfg is None:
+                die(f"No public build recipe for {ctx}/{ds}")
             run(
                 [
                     sys.executable, "-m", "data.process",
                     f"paths={paths_cfg}",
-                    f"process={recipe['process']}",
+                    f"process={BUILD_RECIPE['process']}",
                 ]
             )
 
@@ -273,7 +467,9 @@ def verify_zarrs(contexts: list[str], datasets: list[str]) -> None:
     for ctx in contexts:
         for ds in datasets:
             name = ZARR_NAME.get((ctx, ds))
-            if name and not (PROCESSED_DIR / name).exists():
+            if name is None:
+                missing.append(f"{ctx}/{ds} -> unsupported combination")
+            elif not (PROCESSED_DIR / name).exists():
                 missing.append(f"{ctx}/{ds} -> data/processed/{name}")
     if missing:
         die(
@@ -308,6 +504,7 @@ def run_eval(datasets: list[str], contexts: list[str], models: list[str],
             "--datasets", ds,
             "--contexts", *contexts,
             "--models", *models,
+            "--threshold-source", "fixed_035",
             "--no-context-ensembles",
             "--output", str(ds_out),
             "--cache-dir", str(CACHE_DIR),
@@ -338,13 +535,14 @@ def run_eval(datasets: list[str], contexts: list[str], models: list[str],
     return out, failed
 
 
-def run_icc() -> Path:
-    out = LOGS_DIR / "RESULTS_icc.md"
+def run_external_metrics(datasets: list[str]) -> Path:
+    out = LOGS_DIR / "RESULTS_external.csv"
     run(
         [
-            sys.executable, "scripts/eval/compute_icc_thresholds.py",
+            sys.executable, "scripts/eval/eval_external_cohorts.py",
             "--cache-dir", str(CACHE_DIR),
-            "--out", str(out),
+            "--output", str(out),
+            "--datasets", *datasets,
         ]
     )
     return out
@@ -354,120 +552,83 @@ def run_icc() -> Path:
 # values come from the manifest (single source of truth); these only say where the
 # produced number lives.
 #
-# This is a sanity check, not an exact-equality test. The manifest reports the
-# manuscript's released detector (nine heads = 3 folds x 3 seeds, scored on
-# annotator-verified frames); this pipeline runs a seed-42 three-fold ensemble over
-# the full window grid. Those bases differ by ~0.01-0.02, so the bar is a ballpark:
-# wide enough to absorb the basis gap, tight enough that wrong checkpoints or
-# missing data (off by ~0.1+) still show up as FAIL. ICC is checked against the
-# manuscript's CI. Result ids with no entry here are simply not checked.
+# This is a sanity check, not an exact-equality test. All rows use the public
+# nine-head released detector and the fixed 0.35 operating point.
 BALLPARK_TOL = 0.03
 
 RESULT_CHECKS = {
-    "fogathome_auroc":  {"where": "csv", "dataset": "fogathome", "level": "segmentation",
-                         "thr": None, "col": "AUC", "tol": BALLPARK_TOL,
-                         "label": "FogAtHome frame AUROC"},
-    "fogathome_ap":     {"where": "csv", "dataset": "fogathome", "level": "segmentation",
-                         "thr": None, "col": "AP", "tol": BALLPARK_TOL,
-                         "label": "FogAtHome frame AP"},
-    "fogathome_icc_tf": {"where": "icc", "model": "mc/probe", "label": "FogAtHome ICC(%TF)"},
-    "defog_window_ap":  {"where": "csv", "dataset": "kaggle", "level": "classification",
-                         "thr": "50", "col": "AP", "tol": BALLPARK_TOL,
-                         "label": "DeFOG window AP (in-distribution)"},
+    "fogathome_auroc": {"dataset": "fogathome", "column": "AUROC"},
+    "fogathome_ap": {"dataset": "fogathome", "column": "AP"},
+    "fogathome_icc_tf": {"dataset": "fogathome", "column": "ICC_TF"},
+    "tdcs_auroc": {"dataset": "tdcsfog", "column": "AUROC"},
+    "tdcs_ap": {"dataset": "tdcsfog", "column": "AP"},
+    "tdcs_icc_tf": {"dataset": "tdcsfog", "column": "ICC_TF"},
+    "stanford_auroc": {"dataset": "stanford", "column": "AUROC"},
+    "stanford_ap": {"dataset": "stanford", "column": "AP"},
+    "stanford_icc_tf": {"dataset": "stanford", "column": "ICC_TF"},
+    "dailyliving_auroc": {"dataset": "dailyliving", "column": "AUROC"},
+    "dailyliving_ap": {"dataset": "dailyliving", "column": "AP"},
+    "dailyliving_icc_tf": {"dataset": "dailyliving", "column": "ICC_TF"},
 }
 
 
-def _read_csv_metric(csv_path: Path, dataset: str, level: str, thr, col: str):
+def _read_external_metric(csv_path: Path, dataset: str, column: str):
     import pandas as pd
     if not csv_path.exists():
         return None
     df = pd.read_csv(csv_path)
-    sub = df[(df["dataset"] == dataset) & (df["context"] == "mc") & (df["level"] == level)]
-    if thr is not None:
-        sub = sub[sub["threshold_pct"].astype(str) == thr]
-    return float(sub[col].iloc[0]) if not sub.empty else None
+    sub = df[df["dataset"] == dataset]
+    return float(sub[column].iloc[0]) if not sub.empty else None
 
 
-def _read_icc_value(icc_path: Path, model: str):
-    if not icc_path.exists():
-        return None
-    pat = re.compile(re.escape(model) + r"\b.*?(\d+\.\d+)\s*\[(\d+\.\d+),\s*(\d+\.\d+)\]")
-    for line in icc_path.read_text().splitlines():
-        m = pat.search(line)
-        if m:
-            return float(m.group(1)), (float(m.group(2)), float(m.group(3)))
-    return None
-
-
-def verify_results(manifest: dict) -> bool:
+def verify_results(manifest: dict, datasets: list[str]) -> bool:
     """Compare produced numbers against expected tolerances; print PASS/FAIL."""
-    csv_path = LOGS_DIR / "comprehensive_eval.csv"
-    icc_path = LOGS_DIR / "RESULTS_icc.md"
-
-    # Account for EVERY reported number. A result this pipeline cannot recompute
-    # must be named as such, not dropped -- otherwise a run that verified 4 of 13
-    # prints the same success line as one that verified all of them.
-    specs, not_run = [], []
+    csv_path = LOGS_DIR / "RESULTS_external.csv"
+    specs = []
     for r in manifest.get("results", []):
-        status = r.get("verification", "recorded")
         spec = RESULT_CHECKS.get(r["id"])
-        if status == "one_click" and spec:
+        if spec and spec["dataset"] in datasets:
             specs.append({**spec, "value": float(r["value"]), "ci": r.get("ci")})
-        else:
-            not_run.append((r["id"], status,
-                            r.get("verification_note") or r.get("script") or ""))
 
-    rows = []  # (label, expected_str, actual_str, status)
+    rows = []  # (label, expected_str, actual_str, absolute_difference, status)
     for s in specs:
         exp = s["value"]
-        if s["where"] == "csv":
-            actual = _read_csv_metric(csv_path, s["dataset"], s["level"], s["thr"], s["col"])
-            exp_str = f"{exp:.3f} +/-{s['tol']}"
+        actual = _read_external_metric(csv_path, s["dataset"], s["column"])
+        label = f"{s['dataset']} {s['column']}"
+        if s["column"] in {"AUROC", "AP"}:
+            exp_str = f"{exp:.3f} +/-{BALLPARK_TOL}"
             if actual is None:
-                rows.append((s["label"], exp_str, "n/a", "SKIP"))
+                rows.append((label, exp_str, "n/a", "n/a", "FAIL"))
             else:
-                ok = abs(actual - exp) <= s["tol"]
-                rows.append((s["label"], exp_str, f"{actual:.3f}", "PASS" if ok else "FAIL"))
-        else:  # icc — within CI
-            res = _read_icc_value(icc_path, s["model"])
+                ok = abs(actual - exp) <= BALLPARK_TOL
+                rows.append((label, exp_str, f"{actual:.3f}", f"{abs(actual - exp):.3f}",
+                             "PASS" if ok else "FAIL"))
+        else:
             ci = s.get("ci") or [exp - 0.02, exp + 0.02]
-            exp_str = f"{exp:.3f} [{ci[0]}, {ci[1]}]"
-            if res is None:
-                rows.append((s["label"], exp_str, "n/a", "SKIP"))
+            exp_str = f"{exp:.3f} [{ci[0]:.3f}, {ci[1]:.3f}]"
+            if actual is None:
+                rows.append((label, exp_str, "n/a", "n/a", "FAIL"))
             else:
-                actual, _ = res
                 ok = ci[0] <= actual <= ci[1]
-                rows.append((s["label"], exp_str, f"{actual:.3f}", "PASS" if ok else "FAIL"))
+                rows.append((label, exp_str, f"{actual:.3f}", f"{abs(actual - exp):.3f}",
+                             "PASS" if ok else "FAIL"))
 
     width = max(len(r[0]) for r in rows)
     print()
     log(f"Sanity check vs the manuscript (ballpark: AP/AUC +/-{BALLPARK_TOL}; ICC within CI).")
     log("Small gaps are expected -- see RESULT_CHECKS for why. Large ones mean something is wrong:")
-    for label, exp_str, act_str, status in rows:
+    for label, exp_str, act_str, difference, status in rows:
         tag = {"PASS": _c("1;32", "PASS"), "FAIL": _c("1;31", "FAIL"),
                "SKIP": _c("1;33", "SKIP")}[status]
-        print(f"    [{tag}] {label:<{width}}  expected {exp_str:<22} got {act_str}")
+        print(f"    [{tag}] {label:<{width}}  expected {exp_str:<22} "
+              f"got {act_str:<6} |delta| {difference}")
 
-    if not_run:
-        print()
-        log(f"Not checked by this run ({len(not_run)} of "
-            f"{len(rows) + len(not_run)} reported numbers):")
-        for rid, status, why in not_run:
-            tag = {"scripted": _c("1;36", "SCRIPTED"),
-                   "recorded": _c("1;35", "RECORDED")}.get(status, status.upper())
-            print(f"    [{tag}] {rid}")
-            if why:
-                print(f"             {why}")
-
-    ran = [r for r in rows if r[3] != "SKIP"]
-    all_ok = bool(ran) and all(r[3] == "PASS" for r in ran)
+    ran = rows
+    all_ok = bool(ran) and all(r[4] == "PASS" for r in ran)
     print()
     if all_ok:
-        log(_c("1;32", f"CHECKS PASSED — {len(ran)} of "
-                       f"{len(rows) + len(not_run)} reported numbers verified here, "
-                       "all in the manuscript's ballpark."))
-        if not_run:
-            log(f"The other {len(not_run)} were NOT verified by this run (listed above).")
+        log(_c("1;32", f"CHECKS PASSED — all {len(ran)} requested external metrics "
+                       "are in the manuscript's ballpark."))
     elif not ran:
         die("NO CHECKS COULD RUN — expected outputs are missing, so nothing was "
             "verified. See messages above.")
@@ -482,65 +643,80 @@ def verify_results(manifest: dict) -> bool:
 # --------------------------------------------------------------------------- #
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="Reproduce FORGE evaluation results from released HF artifacts.",
+        description="Reproduce the released FORGE detector on four external cohorts.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--full", action="store_true",
-                   help="full paper table: all contexts (lc mc sc) x models (probe/finetune/supervised)")
-    p.add_argument("--contexts", nargs="+", help="override contexts (default: mc, or lc mc sc with --full)")
-    p.add_argument("--datasets", nargs="+", default=None, choices=list(DATASET_SUBDIR),
-                   help="datasets to evaluate (default: fogathome kaggle; +dailyliving with --full). "
-                        "The 4 headline numbers only need fogathome + kaggle; dailyliving is the "
-                        "memory-heavy daily-living head-to-head.")
-    p.add_argument("--models", nargs="+", choices=list(MODELS),
-                   help="override models (default: probe, or all with --full)")
+    p.add_argument(
+        "--datasets",
+        nargs="+",
+        default=list(DEFAULT_DATASETS),
+        choices=DEFAULT_DATASETS,
+        help="external cohorts to evaluate (default: all four)",
+    )
     p.add_argument("--skip-download", action="store_true", help="skip HF weight + dataset download")
     p.add_argument("--skip-zarr", action="store_true", help="skip zarr building")
-    p.add_argument("--no-icc", action="store_true", help="skip the clinical ICC table step")
+    p.add_argument("--no-score", action="store_true", help="skip external metric scoring")
+    p.add_argument(
+        "--verify-assets-only",
+        action="store_true",
+        help="verify pinned public model/data packaging without running inference",
+    )
     p.add_argument("--batch-scale", type=float, default=None,
                    help="EVAL_BATCH_SCALE for low-VRAM GPUs, e.g. 0.25 (results unchanged)")
     args = p.parse_args()
 
-    contexts = args.contexts or (["lc", "mc", "sc"] if args.full else ["mc"])
-    models = args.models or (
-        list(MODELS) if args.full else ["probe"]
-    )
-    datasets = args.datasets or (
-        ["fogathome", "dailyliving", "kaggle"] if args.full else ["fogathome", "kaggle"]
-    )
-    phases = {m for m in models if m in MODELS}
-
-    log(f"Plan: contexts={contexts}  models={models}  datasets={datasets}")
+    contexts = ["mc"]
+    models = ["probe"]
+    datasets = args.datasets
+    phases = {"probe"}
 
     manifest = load_manifest()
-    preflight()
+    started_at = datetime.now(timezone.utc)
+    started = time.monotonic()
+    status = "failed"
+    try:
+        log(f"Plan: contexts={contexts}  models={models}  datasets={datasets}")
+        preflight()
 
-    if not args.skip_download:
-        download_weights(manifest, contexts, phases)
-        download_datasets(manifest, datasets)
-    else:
-        log("Skipping download (--skip-download)")
+        if args.verify_assets_only:
+            verify_public_assets(manifest, datasets)
+            status = "assets_verified"
+            log("PUBLIC ASSET CHECKS PASSED")
+            return
 
-    if not args.skip_zarr:
-        build_zarrs(contexts, datasets)
-    else:
-        log("Skipping zarr build (--skip-zarr)")
+        if not args.skip_download:
+            download_weights(manifest, contexts, phases)
+            download_datasets(manifest, datasets)
+        else:
+            log("Skipping download (--skip-download)")
 
-    verify_zarrs(contexts, datasets)
+        if not args.skip_zarr:
+            build_zarrs(contexts, datasets)
+        else:
+            log("Skipping zarr build (--skip-zarr)")
 
-    csv, failed = run_eval(datasets, contexts, models, args.batch_scale)
-    log(f"AP/AUC results -> {csv}")
+        verify_zarrs(contexts, datasets)
 
-    if not args.no_icc:
-        # ICC needs only the fogathome + kaggle frame parquets, which are cached
-        # even if other datasets (e.g. dailyliving) failed above.
-        icc = run_icc()
-        log(f"Clinical ICC table -> {icc}")
+        csv, failed = run_eval(datasets, contexts, models, args.batch_scale)
+        log(f"AP/AUC results -> {csv}")
 
-    if failed:
-        warn(f"Datasets that did not complete: {failed} (headline numbers are unaffected).")
-    verify_results(manifest)  # prints PASS/FAIL table; exits non-zero on any FAIL
-    log("Done — see the 'logs' folder for full results.")
+        if failed:
+            die(f"Datasets that did not complete: {failed}")
+        if not args.no_score:
+            metrics = run_external_metrics(datasets)
+            log(f"External metrics -> {metrics}")
+            verify_results(manifest, datasets)
+        status = "completed"
+        log("Done — see the 'logs' folder for full results.")
+    finally:
+        record = write_run_record(
+            manifest,
+            datasets,
+            started_at,
+            time.monotonic() - started,
+            status,
+        )
+        log(f"Run provenance -> {record}")
 
 
 if __name__ == "__main__":

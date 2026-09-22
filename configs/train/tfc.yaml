@@ -9,6 +9,7 @@ defaults:
   - trainer: fog_trainer
   - _self_
 
+pipeline_target: pipeline.tfc.TFContrastivePipeline
 pipeline_type: "simclr"
 
 callbacks:

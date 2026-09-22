@@ -24,7 +24,7 @@ import matplotlib.ticker as mticker
 import matplotlib.gridspec as gridspec
 from scipy.ndimage import gaussian_filter, zoom
 
-ROOT      = Path(__file__).resolve().parents[2]   # repo root (acc_base)
+ROOT      = Path(__file__).resolve().parents[2]   # repository root
 sys.path.insert(0, str(ROOT))
 
 CKPT_PATH = ROOT / "checkpoints/ssl_comparison/mae_2d_ep7.ckpt"

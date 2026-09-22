@@ -11,11 +11,13 @@ For each experiment the test suite checks:
 
 import hydra
 import pytest
+import pytorch_lightning as pl
 import torch
 from omegaconf import OmegaConf
 
 from utils.config_loaders import load_config
-from .conftest import collect_experiment_names, CONFIG_DIR
+
+from .conftest import CONFIG_DIR, collect_experiment_names
 
 # ---------------------------------------------------------------------------
 # Parametrize over all experiment configs
@@ -62,6 +64,14 @@ def test_experiment_pydantic_validates(experiment):
     assert validated.model is not None
     assert validated.train is not None
     assert validated.data is not None
+
+
+@pytest.mark.parametrize("experiment", ALL_EXPERIMENTS)
+def test_experiment_pipeline_target_resolves(experiment):
+    """Every experiment selects an importable Lightning pipeline class."""
+    cfg = _compose(experiment)
+    pipeline_class = hydra.utils.get_class(cfg.train.pipeline_target)
+    assert issubclass(pipeline_class, pl.LightningModule)
 
 
 # ---------------------------------------------------------------------------

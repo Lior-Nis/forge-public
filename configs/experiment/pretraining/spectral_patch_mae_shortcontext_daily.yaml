@@ -15,7 +15,7 @@ defaults:
   - override /model/backbone: spectral_patch_encoder
   - override /data/process: kaggle_shortcontext_daily
   - override /data/paths: kaggle_daily_shortcontext
-  - override /data/splits: kaggle_daily/shortcontext
+  - override /data/splits: kaggle_daily/ssl_pretraining
   - override /train/trainer: ssl_pretrain
   - _self_
 

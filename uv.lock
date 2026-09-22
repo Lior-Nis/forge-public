@@ -8,90 +8,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "acc-base"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "captum" },
-    { name = "dash" },
-    { name = "dash-bootstrap-components" },
-    { name = "hydra-core" },
-    { name = "litmodels" },
-    { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "omegaconf" },
-    { name = "pandas" },
-    { name = "pillow" },
-    { name = "pingouin" },
-    { name = "psutil" },
-    { name = "ptwt" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "pytest" },
-    { name = "pytorch-lightning" },
-    { name = "rich" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
-    { name = "seaborn" },
-    { name = "timm" },
-    { name = "torch", version = "2.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
-    { name = "torch", version = "2.9.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'win32'" },
-    { name = "torchaudio", version = "2.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
-    { name = "torchaudio", version = "2.9.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'win32'" },
-    { name = "torchvision", version = "0.24.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
-    { name = "torchvision", version = "0.24.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'win32'" },
-    { name = "tqdm" },
-    { name = "umap-learn" },
-    { name = "wandb" },
-    { name = "zarr" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "captum", specifier = "==0.8.0" },
-    { name = "dash", specifier = ">=4.0.0" },
-    { name = "dash-bootstrap-components", specifier = ">=2.0.4" },
-    { name = "hydra-core", specifier = ">=1.3.2" },
-    { name = "litmodels", specifier = ">=0.1.8" },
-    { name = "matplotlib", specifier = "==3.10.0" },
-    { name = "numpy", specifier = "==1.26.4" },
-    { name = "omegaconf", specifier = ">=2.3.0" },
-    { name = "pandas", specifier = "==2.3.1" },
-    { name = "pillow", specifier = "==11.3.0" },
-    { name = "pingouin", specifier = "==0.5.5" },
-    { name = "psutil", specifier = "==5.9.0" },
-    { name = "ptwt", specifier = "==1.0.0" },
-    { name = "pyarrow", specifier = ">=24.0.0" },
-    { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pytest", specifier = ">=8.4.1" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = "==8.4.1" },
-    { name = "pytorch-lightning", specifier = ">=2.0.0,<3.0.0" },
-    { name = "rich", specifier = ">=14.2.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
-    { name = "scikit-learn", specifier = "==1.6.1" },
-    { name = "scipy", specifier = "==1.15.3" },
-    { name = "seaborn", specifier = "==0.13.2" },
-    { name = "timm", specifier = ">=1.0.24" },
-    { name = "torch", marker = "sys_platform != 'win32'", specifier = "==2.9.1" },
-    { name = "torch", marker = "sys_platform == 'win32'", specifier = "==2.9.1", index = "https://download.pytorch.org/whl/cu126" },
-    { name = "torchaudio", marker = "sys_platform != 'win32'", specifier = "==2.9.1" },
-    { name = "torchaudio", marker = "sys_platform == 'win32'", specifier = "==2.9.1", index = "https://download.pytorch.org/whl/cu126" },
-    { name = "torchvision", marker = "sys_platform != 'win32'", specifier = "==0.24.1" },
-    { name = "torchvision", marker = "sys_platform == 'win32'", specifier = "==0.24.1", index = "https://download.pytorch.org/whl/cu126" },
-    { name = "tqdm", specifier = "==4.67.1" },
-    { name = "umap-learn", specifier = ">=0.5.12" },
-    { name = "wandb", specifier = "==0.23.0" },
-    { name = "zarr", specifier = ">=3.1.5" },
-]
-provides-extras = ["dev"]
-
-[[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -378,6 +294,15 @@ wheels = [
 ]
 
 [[package]]
+name = "et-xmlfile"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/38/af70d7ab1ae9d4da450eeec1fa3918940a5fafb9055e934af8d6eb0c2313/et_xmlfile-2.0.0.tar.gz", hash = "sha256:dab3f4764309081ce75662649be815c4c9081e88f0837825f90fd28317d4da54", size = 17234, upload-time = "2024-10-25T17:25:40.039Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl", hash = "sha256:7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa", size = 18059, upload-time = "2024-10-25T17:25:39.051Z" },
+]
+
+[[package]]
 name = "fastapi"
 version = "0.128.0"
 source = { registry = "https://pypi.org/simple" }
@@ -434,6 +359,94 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/07/ad/37dd1ae5fa6e01612a1fbb954f0927681f282925a86e86198ccd7b15d515/fonttools-4.61.1-cp311-cp311-win_amd64.whl", hash = "sha256:fe2efccb324948a11dd09d22136fe2ac8a97d6c1347cf0b58a911dcd529f66b7", size = 2331951, upload-time = "2025-12-12T17:30:02.254Z" },
     { url = "https://files.pythonhosted.org/packages/c7/4e/ce75a57ff3aebf6fc1f4e9d508b8e5810618a33d900ad6c19eb30b290b97/fonttools-4.61.1-py3-none-any.whl", hash = "sha256:17d2bf5d541add43822bcf0c43d7d847b160c9bb01d15d5007d84e2217aaa371", size = 1148996, upload-time = "2025-12-12T17:31:21.03Z" },
 ]
+
+[[package]]
+name = "forge-fog"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "hydra-core" },
+    { name = "litmodels" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "omegaconf" },
+    { name = "openpyxl" },
+    { name = "pandas" },
+    { name = "pillow" },
+    { name = "pingouin" },
+    { name = "ptwt" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+    { name = "pytorch-lightning" },
+    { name = "rich" },
+    { name = "safetensors" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "timm" },
+    { name = "torch", version = "2.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
+    { name = "torch", version = "2.9.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'win32'" },
+    { name = "torchaudio", version = "2.9.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
+    { name = "torchaudio", version = "2.9.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'win32'" },
+    { name = "torchvision", version = "0.24.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'win32'" },
+    { name = "torchvision", version = "0.24.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'win32'" },
+    { name = "tqdm" },
+    { name = "wandb" },
+    { name = "zarr" },
+]
+
+[package.optional-dependencies]
+analysis = [
+    { name = "captum" },
+    { name = "dash" },
+    { name = "dash-bootstrap-components" },
+    { name = "seaborn" },
+    { name = "umap-learn" },
+]
+dev = [
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "captum", marker = "extra == 'analysis'", specifier = "==0.8.0" },
+    { name = "dash", marker = "extra == 'analysis'", specifier = ">=4.0.0" },
+    { name = "dash-bootstrap-components", marker = "extra == 'analysis'", specifier = ">=2.0.4" },
+    { name = "huggingface-hub", specifier = ">=0.36.0" },
+    { name = "hydra-core", specifier = ">=1.3.2" },
+    { name = "litmodels", specifier = ">=0.1.8" },
+    { name = "matplotlib", specifier = "==3.10.0" },
+    { name = "numpy", specifier = "==1.26.4" },
+    { name = "omegaconf", specifier = ">=2.3.0" },
+    { name = "openpyxl", specifier = ">=3.1.5" },
+    { name = "pandas", specifier = "==2.3.1" },
+    { name = "pillow", specifier = "==11.3.0" },
+    { name = "pingouin", specifier = "==0.5.5" },
+    { name = "ptwt", specifier = "==1.0.0" },
+    { name = "pyarrow", specifier = ">=24.0.0" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = "==8.4.1" },
+    { name = "pytorch-lightning", specifier = ">=2.0.0,<3.0.0" },
+    { name = "rich", specifier = ">=14.2.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
+    { name = "safetensors", specifier = ">=0.7.0" },
+    { name = "scikit-learn", specifier = "==1.6.1" },
+    { name = "scipy", specifier = "==1.15.3" },
+    { name = "seaborn", marker = "extra == 'analysis'", specifier = "==0.13.2" },
+    { name = "timm", specifier = ">=1.0.24" },
+    { name = "torch", marker = "sys_platform != 'win32'", specifier = "==2.9.1" },
+    { name = "torch", marker = "sys_platform == 'win32'", specifier = "==2.9.1", index = "https://download.pytorch.org/whl/cu126" },
+    { name = "torchaudio", marker = "sys_platform != 'win32'", specifier = "==2.9.1" },
+    { name = "torchaudio", marker = "sys_platform == 'win32'", specifier = "==2.9.1", index = "https://download.pytorch.org/whl/cu126" },
+    { name = "torchvision", marker = "sys_platform != 'win32'", specifier = "==0.24.1" },
+    { name = "torchvision", marker = "sys_platform == 'win32'", specifier = "==0.24.1", index = "https://download.pytorch.org/whl/cu126" },
+    { name = "tqdm", specifier = "==4.67.1" },
+    { name = "umap-learn", marker = "extra == 'analysis'", specifier = ">=0.5.12" },
+    { name = "wandb", specifier = "==0.23.0" },
+    { name = "zarr", specifier = ">=3.1.5" },
+]
+provides-extras = ["analysis", "dev"]
 
 [[package]]
 name = "frozenlist"
@@ -1077,6 +1090,18 @@ wheels = [
 ]
 
 [[package]]
+name = "openpyxl"
+version = "3.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "et-xmlfile" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/f9/88d94a75de065ea32619465d2f77b29a0469500e99012523b91cc4141cd1/openpyxl-3.1.5.tar.gz", hash = "sha256:cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050", size = 186464, upload-time = "2024-06-28T14:03:44.161Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/da/977ded879c29cbd04de313843e76868e6e13408a94ed6b987245dc7c8506/openpyxl-3.1.5-py2.py3-none-any.whl", hash = "sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2", size = 250910, upload-time = "2024-06-28T14:03:41.161Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1246,12 +1271,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/56/13/333b8f421738f149d4fe5e49553bc2a2ab75235486259f689b4b91f96cec/protobuf-6.33.2-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:1f8017c48c07ec5859106533b682260ba3d7c5567b1ca1f24297ce03384d1b4f", size = 323270, upload-time = "2025-12-06T00:17:48.253Z" },
     { url = "https://files.pythonhosted.org/packages/0e/15/4f02896cc3df04fc465010a4c6a0cd89810f54617a32a70ef531ed75d61c/protobuf-6.33.2-py3-none-any.whl", hash = "sha256:7636aad9bb01768870266de5dc009de2d1b936771b38a793f73cbbf279c91c5c", size = 170501, upload-time = "2025-12-06T00:17:52.211Z" },
 ]
-
-[[package]]
-name = "psutil"
-version = "5.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/b6/ea8a7728f096a597f0032564e8013b705aa992a0990becd773dcc4d7b4a7/psutil-5.9.0.tar.gz", hash = "sha256:869842dbd66bb80c3217158e629d6fceaecc3a3166d3d1faee515b05dd26ca25", size = 478322, upload-time = "2021-12-29T21:27:59.163Z" }
 
 [[package]]
 name = "ptwt"

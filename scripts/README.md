@@ -1,29 +1,50 @@
-# Scripts
+# Command-line entrypoints
 
-Entry points, grouped by stage. Every command runs from the repository root inside the
-uv environment (`uv run python …` or `source .venv/bin/activate`).
+The supported command surface is intentionally small. Experiment behavior is
+selected with Hydra configs and overrides rather than additional wrapper
+scripts.
 
-| Directory | Contents |
-|---|---|
-| `train/` | `pretrain_mae.py` (FORGE masked-autoencoder pretraining), `pretrain_simclr.py`, `pretrain_jepa.py` (SSL-objective ablations), `train_classification.py` (probe / fine-tune / supervised heads), `test_classification.py`. |
-| `data/` | Dataset standardisation, split generation (`create_fogcount_splits.py`, `create_fogathome_lopo_splits.py`, …), soft-label recomputation, context-length zarr views. |
-| `eval/` | Evaluation and statistics. See [`eval/README.md`](eval/README.md) for canonical vs supplementary scripts. |
-| `analysis/` | Figure generation and supplementary analyses. |
-| `embed/` | Embedding extraction and embedding-probe training. |
-| `shell/` | The batch runners used for the sweeps (label efficiency, SSL ablation, context comparison, …). They `cd` to the repository root and assume checkpoints under `checkpoints/`. |
-| `release/` | Author-side tooling that built the Hugging Face release (manifest, checkpoint slimming, model/dataset cards, uploaders). |
+## Train
 
-Examples:
+`train.py` launches every supervised and self-supervised pipeline. The chosen
+experiment config supplies the concrete pipeline class.
 
 ```bash
-# FORGE MAE pretraining (medium context, 5 s)
-uv run python scripts/train/pretrain_mae.py experiment=pretraining/spectral_patch_mae_medcontext_daily
+# Classification
+uv run python scripts/train.py experiment=classification/baseline
 
-# Frozen-encoder BiGRU probe on one DeFOG fold
-uv run python scripts/train/train_classification.py experiment=classification/spectral_patch_mae_mc_valid_defog_soft
+# MAE, SimCLR/VICReg, or JEPA pretraining
+uv run python scripts/train.py experiment=pretraining/spectral_patch_mae_daily
+uv run python scripts/train.py experiment=pretraining/spectral_patch_simclr_daily
+uv run python scripts/train.py experiment=pretraining/spectral_patch_jepa_daily
 
-# Print the resolved Hydra config without running
-uv run python scripts/train/train_classification.py experiment=classification/spectral_patch_mae_mc_valid_defog_soft --cfg job
+# Sweeps use Hydra directly
+uv run python scripts/train.py -m experiment=classification/baseline \
+  global.seed=42,43,44 train.optimizer.lr=1e-4,5e-4
 ```
 
-`release/manifest.yaml` maps each reported number to its checkpoint, config and command.
+Use `ckpt_path=/path/to/checkpoint.ckpt` to resume full training state or
+`weights_path=/path/to/checkpoint.ckpt` to initialize model weights with fresh
+optimizer and scheduler state.
+
+## Prepare data
+
+The data processor is already a module entrypoint:
+
+```bash
+python -m data.process paths=fogathome_medcontext process=kaggle_medcontext
+```
+
+Dataset conversion and release-maintenance utilities live in `data/` and
+`release/`, respectively.
+
+## Evaluate and reproduce
+
+- `../reproduce.py` is the public released-detector reproduction command.
+- `eval/eval_comprehensive.py` is the general evaluation engine.
+- `eval/eval_external_cohorts.py` computes the released external-cohort table.
+- Other files under `eval/` and `analysis/` implement named analyses rather
+  than acting as alternate top-level launchers.
+
+One-off shell loops and machine-monitoring scripts are intentionally omitted.
+Use Hydra multiruns for parameter sweeps; Git history retains the old wrappers.
