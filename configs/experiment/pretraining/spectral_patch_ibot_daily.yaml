@@ -8,7 +8,7 @@
 defaults:
   - override /model: ibot
   - override /train: ibot
-  - override /data: jepa
+  - override /data: mae
   - override /model/backbone: spectral_patch_encoder
   - override /data/process: kaggle_longcontext
   - override /train/trainer: ssl_pretrain

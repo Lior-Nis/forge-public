@@ -9,6 +9,7 @@ defaults:
   - logger: classification
   - _self_
 
+pipeline_target: pipeline.classification.ClassificationPipeline
 pipeline_type: "classification"
 
 logging:

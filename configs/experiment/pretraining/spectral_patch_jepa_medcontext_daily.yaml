@@ -11,11 +11,11 @@
 defaults:
   - override /model: jepa
   - override /train: jepa
-  - override /data: jepa
+  - override /data: mae
   - override /model/backbone: spectral_patch_encoder
   - override /data/process: kaggle_medcontext_daily
   - override /data/paths: kaggle_daily_medcontext
-  - override /data/splits: kaggle_daily/medcontext
+  - override /data/splits: kaggle_daily/ssl_pretraining
   - override /train/trainer: ssl_pretrain
   - _self_
 

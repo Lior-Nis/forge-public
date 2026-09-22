@@ -8,6 +8,7 @@ defaults:
   - callbacks: null
   - _self_
 
+pipeline_target: pipeline.classification.ClassificationPipeline
 pipeline_type: classification
 
 run_name: null

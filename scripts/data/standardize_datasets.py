@@ -6,10 +6,10 @@ Converts two external datasets into the format expected by data/process/:
     Time, AccV, AccML, AccAP, StartHesitation, Turn, Walking, Valid
 
 Usage:
-    uv run python scripts/standardize_datasets.py
+    uv run python scripts/data/standardize_datasets.py --datasets-root /path/to/Datasets
 """
 
-import os
+import argparse
 import logging
 from pathlib import Path
 
@@ -20,20 +20,17 @@ from scipy.signal import resample
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-DATASETS_ROOT = Path(os.environ.get("FORGE_DATASETS_ROOT", Path.home() / "Datasets"))
-FOG_DATASET_ROOT = DATASETS_ROOT / "fog-dataset"
-
 TARGET_COLS = ["Time", "AccV", "AccML", "AccAP", "StartHesitation", "Turn", "Walking", "Valid"]
 
 
-def standardize_17838806():
+def standardize_17838806(datasets_root: Path, fog_dataset_root: Path):
     """Convert the 17838806 (fogstar) dataset to fog-dataset format.
 
     Source: 31 session CSVs at 60 Hz with multi-sensor IMU data.
     Extracts back sensor accelerometer, resamples to 100 Hz, maps fog labels.
     """
-    source_dir = DATASETS_ROOT / "17838806" / "sessions"
-    output_dir = FOG_DATASET_ROOT / "fogstar" / "fogstar"
+    source_dir = datasets_root / "17838806" / "sessions"
+    output_dir = fog_dataset_root / "fogstar" / "fogstar"
     sessions_dir = output_dir / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
 
@@ -88,16 +85,16 @@ def standardize_17838806():
     logger.info(f"Wrote {len(metadata_rows)} sessions to {output_dir}")
 
 
-def standardize_fogathome():
+def standardize_fogathome(datasets_root: Path, fog_dataset_root: Path):
     """Convert the fog@home dataset to fog-dataset format.
 
     Source: 97 acc CSVs (already at 100 Hz with correct column names) + labels.csv.
     Joins labels to accelerometer data by file hash and timestep index.
     """
-    source_base = DATASETS_ROOT / "fogathome_dataset_forlior" / "fogathome_dataset"
+    source_base = datasets_root / "fogathome_dataset_forlior" / "fogathome_dataset"
     acc_dir = source_base / "acc" / "fog@home_provoking250325"
     labels_path = source_base / "labels.csv"
-    output_dir = FOG_DATASET_ROOT / "fogathome" / "fogathome"
+    output_dir = fog_dataset_root / "fogathome" / "fogathome"
     sessions_dir = output_dir / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
 
@@ -171,7 +168,7 @@ def standardize_fogathome():
     logger.info(f"Wrote {len(metadata_rows)} sessions to {output_dir}")
 
 
-def standardize_fogathome_dailyliving():
+def standardize_fogathome_dailyliving(datasets_root: Path, fog_dataset_root: Path):
     """Convert the fogathome_dailyliving dataset to fog-dataset format.
 
     Source: 3428 parquet files at 100 Hz with columns:
@@ -182,8 +179,8 @@ def standardize_fogathome_dailyliving():
     Outputs: metadata.csv (Id, Subject) + sessions/{id}.csv with standard columns.
     Subject IDs use the 'c' namespace (fogathome uses 'a', fogstar uses 'b').
     """
-    source_dir = DATASETS_ROOT / "fogathome_dailyliving" / "preprocesseddata"
-    output_dir = FOG_DATASET_ROOT / "fogathome_dailyliving" / "fogathome_dailyliving"
+    source_dir = datasets_root / "fogathome_dailyliving" / "preprocesseddata"
+    output_dir = fog_dataset_root / "fogathome_dailyliving" / "fogathome_dailyliving"
     sessions_dir = output_dir / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
 
@@ -228,14 +225,30 @@ def standardize_fogathome_dailyliving():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--datasets-root",
+        type=Path,
+        required=True,
+        help="directory containing the source datasets",
+    )
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=None,
+        help="fog-dataset output root (default: <datasets-root>/fog-dataset)",
+    )
+    args = parser.parse_args()
+    output_root = args.output_root or args.datasets_root / "fog-dataset"
+
     logger.info("=== Standardizing 17838806 (fogstar) ===")
-    standardize_17838806()
+    standardize_17838806(args.datasets_root, output_root)
 
     logger.info("\n=== Standardizing fog@home ===")
-    standardize_fogathome()
+    standardize_fogathome(args.datasets_root, output_root)
 
     logger.info("\n=== Standardizing fogathome_dailyliving ===")
-    standardize_fogathome_dailyliving()
+    standardize_fogathome_dailyliving(args.datasets_root, output_root)
 
     logger.info("\nDone! Run processing with:")
     logger.info("  python -m data.process paths=fogstar")

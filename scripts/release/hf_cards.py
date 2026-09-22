@@ -1,6 +1,7 @@
 """Generate HuggingFace model + dataset card markdown from the manifest."""
 from __future__ import annotations
 
+
 def _result(m: dict, rid: str) -> dict:
     """Look a result up by id -- never by list position (the order changes)."""
     for r in m["results"]:
@@ -33,7 +34,7 @@ def model_card(m: dict) -> str:
         f"| {c.upper()} | {e['window_frames']} | `{e['hf_path']}` | {e['params']:,} |"
         for c, e in m["encoders"].items())
     cls_rows = "\n".join(
-        f"| `{c['hf_path']}` | {c['context']} | {c['phase']} | {c['fold']} |"
+        f"| `{c['hf_path']}` | {c['context']} | {c['phase']} | {c['fold']} | {c['seed']} |"
         for c in m["classification"])
     return f"""---
 license: mit
@@ -67,25 +68,8 @@ target-cohort training and the unchanged DeFOG operating point of **0.35**.
 (58.18 h of 301.8 h, 2.92% FOG); it is gait-conditioned burden, **not** whole-recording
 %TF. Stanford is negative evidence: discrimination survives the shift, the fixed
 threshold does not (its oracle-rule threshold is 0.18). In-distribution reference:
-window-level AP **0.730** on the DeFOG validation folds. Full definitions and confidence
+window-level AP **0.730** on held-out DeFOG folds. Full definitions and confidence
 intervals are in `manifest.yaml` under `results:`.
-
-## Controlled comparison (a different model set)
-
-The paper's headline effect is a separate, deliberately constrained experiment: two arms
-differing **only** in encoder initialization, under matched downstream training. Its
-numbers are lower than the released detector's on the same cohort because it is a
-different model set — not a worse estimate of the same thing.
-
-| Cohort | Metric | Self-supervised | Supervised from scratch | Difference [95% CI] |
-|---|---|---|---|---|
-| FogAtHome-provoking | AUROC | 0.861 | 0.752 | +0.109 [0.029, 0.182] |
-| FogAtHome-provoking | AP | 0.784 | 0.592 | +0.192 [0.064, 0.338] |
-| tDCS-FOG | AUROC | 0.869 | 0.657 | +0.212 [0.126, 0.280] |
-| tDCS-FOG | AP | 0.811 | 0.501 | +0.310 [0.133, 0.397] |
-
-Each result in `manifest.yaml` names its `model` set and the manuscript `table` it comes
-from, so the two sets stay distinguishable.
 
 ## Released weights
 
@@ -94,91 +78,59 @@ from, so the two sets stay distinguishable.
 |---|---|---|---|
 {enc_rows}
 
-### Downstream classification weights (57-participant DeFOG, 3-fold participant-level CV)
-| File | Context | Phase | Fold |
-|---|---|---|---|
+### Downstream classification checkpoints (57-participant DeFOG, 3-fold participant-level CV)
+| File | Context | Phase | Fold | Seed |
+|---|---|---|---|---|
 {cls_rows}
 
 ## What this release contains
-All 27 classification heads are the **seed-42** runs. The manuscript's released detector
-averages nine heads (3 folds x 3 seeds) over one shared frozen encoder, so
-`classification/mc_probe_fold{0,1,2}.safetensors` rebuild the **seed-42 three-fold ensemble**.
-That is the configuration this project's evaluation scripts run, and it lands within about
-0.02 of the nine-head numbers tabled above.
+The release includes the nine MC probe heads (3 folds x seeds 42, 43, and 44).
+External evaluation averages all nine; the DeFOG reference remains seed 42.
 
 ## Usage
-This release is **weights only**: each file is a `.safetensors` tensor set with small
-string metadata (name, context, phase, fold, seed, and the `experiment` config that
-rebuilds the model). No training configuration, optimizer state or local file path is
-included, and loading executes no pickled code.
-
-Rebuild a model from the companion repo, which composes the architecture from the
-`experiment` config named in the file's metadata and in `manifest.yaml`:
+Classification artifacts are safetensors files whose metadata names the committed Hydra
+experiment and split used to rebuild the model.
 
 ```python
 from utils.released_weights import load_released_model
-
 model, config = load_released_model(
-    "release/forge-fog/classification/mc_probe_fold0.safetensors",
-    experiment="classification/spectral_patch_mae_mc_valid_defog_soft",
-    overrides=["data/splits=kaggle_labeled/kfold_defog_fogcount_valid_mc0"],
+    "release/forge-fog/classification/mc_probe_fold0.safetensors"
 )
 ```
 
-Or read the tensors directly:
-
-```python
-from safetensors.torch import load_file
-from safetensors import safe_open
-
-state_dict = load_file("classification/mc_probe_fold0.safetensors")
-with safe_open("classification/mc_probe_fold0.safetensors", framework="pt") as f:
-    meta = f.metadata()   # name / kind / context / phase / fold / seed / experiment / splits
-```
-
-Each classification file already contains its encoder, so `encoders/*.safetensors` are
-needed only to train new heads.
-
-## Citation
-{m['meta']['authors']}. *{m['meta']['paper']}*. Submitted to npj Digital Medicine, 2026.
-
-Reproduce every paper number with the companion repo's `reproduce-evaluations` skill (see
-`manifest.yaml`, shipped in this repo).
-Code: [github.com/Lior-Nis/forge-public](https://github.com/Lior-Nis/forge-public).
+Reproduce the four external cohorts with the companion repo's `./reproduce.sh` command
+(see `manifest.yaml`, shipped in this repo).
+Code: [github.com/Lior-Nis/forge](https://github.com/Lior-Nis/forge).
 Data: [{m['meta']['hf_dataset_repo']}](https://huggingface.co/datasets/{m['meta']['hf_dataset_repo']}).
+
+## Intended use and limitations
+
+FORGE is a research model for evaluating freezing-of-gait methods on compatible
+lower-back accelerometer recordings. It is not a medical device and must not be
+used to diagnose, monitor, or make treatment decisions for an individual. The
+fixed threshold is cohort-sensitive: the Stanford result in particular shows
+that discrimination can survive a device/site shift while calibrated burden does
+not. Users should report cohort provenance, sampling/resampling, eligibility
+filters, and the exact model revision.
 
 License: **MIT**.
 """
 
 def dataset_card(m: dict) -> str:
     rows = "\n".join(
-        f"| {k} | {d['hf_subdir']} | {d['role']} | {d.get('prevalence','-')} |"
+        f"| {k} | {d.get('hf_subdir', d.get('source', '-'))} | {d['role']} | "
+        f"{d.get('prevalence','-')} |"
         for k, d in m["datasets"].items())
     return f"""---
 license: other
-license_name: source-study-data-use-terms
+license_name: source-specific dataset terms
+license_link: https://github.com/Lior-Nis/forge/blob/main/DATASETS.md
 tags: [freezing-of-gait, parkinsons, accelerometer]
-extra_gated_prompt: >-
-  These are human-participant recordings from clinical studies, released for
-  non-commercial research use. By requesting access you agree to use them for
-  research only, to make no attempt to re-identify participants, not to
-  redistribute them, and to comply with the data-use terms of each source study.
-extra_gated_fields:
-  Full name: text
-  Affiliation: text
-  Intended research use: text
-  I will not attempt to re-identify participants: checkbox
-  I will not redistribute this data: checkbox
 ---
 
 # FOG Dataset (FORGE)
 
 Lower-back accelerometer (Axivity, 100 Hz, 3-axis) recordings for FOG research.
-
-**Access is gated.** Requests are reviewed by the authors. The recordings come from
-third-party clinical studies and stay subject to the data-use terms of each source
-study, so this repository is not covered by the MIT license of the FORGE code and
-weights.
 
 | Split | Subdir | Role | Frame FOG prevalence |
 |---|---|---|---|
@@ -187,4 +139,12 @@ weights.
 `fogathome_dailyliving` holds 301.8 h of naturalistic free-living recordings (11 patients,
 3,428 recordings, 1.09% frame-level FOG overall; 2.92% inside the walking-and-standing
 eligible domain). Used as the external naturalistic evaluation in FORGE.
+
+## Provenance and terms
+
+The MIT license in the FORGE code repository does not relicense participant
+recordings or third-party datasets. Each cohort retains its source terms and
+participant-data restrictions. The exact public revision used by the paper is
+recorded in the companion repository's `release/manifest.yaml`; its
+`DATASETS.md` identifies the source and evaluation role of each cohort.
 """

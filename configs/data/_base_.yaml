@@ -3,7 +3,7 @@ defaults:
   - dataset: binary_dataset
   - dataloader: classification_loader
   - paths: kaggle
-  - process: default
+  - process: kaggle
   - splits: kaggle_labeled/dedup
   - _self_
 

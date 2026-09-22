@@ -2,7 +2,7 @@
 
 defaults:
   - preprocessors: null
-  - transform: default
+  - transform: wavelet
   - backbone: convnext
   - signal_augmentor: default
   - spectral_augmentor: default

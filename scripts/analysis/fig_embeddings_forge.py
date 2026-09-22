@@ -20,7 +20,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-ROOT        = Path(__file__).resolve().parents[2]   # repo root (acc_base)
+ROOT        = Path(__file__).resolve().parents[2]   # repository root
 EMBD_DIR    = ROOT / "logs/embeddings"
 OUT         = ROOT / "research/paper_final/figures"
 OUT.mkdir(parents=True, exist_ok=True)

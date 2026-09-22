@@ -1,5 +1,5 @@
 
 defaults:
   - paths: kaggle
-  - process: default
+  - process: kaggle
   - _self_

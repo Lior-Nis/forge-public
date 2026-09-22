@@ -36,6 +36,7 @@ CONTEXTS = ["mc", "lc", "sc", "mc+sc", "lc+sc", "lc+mc", "lc+mc+sc"]
 MODELS = ["probe", "finetune", "supervised"]
 GAP_TOLERANCE_FRAMES = 60  # 0.6 s @ 100 Hz — matches Salomon/Yang episode gap
 SAMPLE_RATE_HZ = 100  # FogAtHome / DeFOG Axivity AX6
+CACHE_FORMAT = "safetensors"
 # CONFIRMED Activity legend (Salomon, 2026-06-07):
 #   0=Other  1=Walking  2=Lying  3=Sitting  4=Standing  5=Sleep  6=Non-wear
 # Gait == walking == {1} (the strict gait definition; the only state in which true
@@ -194,6 +195,7 @@ def main():
                     help="contexts to evaluate (single or ensemble, e.g. mc lc+mc)")
     ap.add_argument("--gait-labels", default=None,
                     help="FogAtHome labels.csv with an Activity column; enables the gait-filtered (Salomon-matched) %%TF ICC")
+    ap.add_argument("--fixed-threshold", type=float, default=None)
     args = ap.parse_args()
     contexts = args.contexts
 
@@ -212,8 +214,8 @@ def main():
     records = []
     for ctx in contexts:
         for mdl in MODELS:
-            fa = cache / f"fogathome_{ctx}_{mdl}_frames.parquet"
-            kg = cache / f"kaggle_{ctx}_{mdl}_frames.parquet"
+            fa = cache / f"fogathome_{ctx}_{mdl}_{CACHE_FORMAT}_frames.parquet"
+            kg = cache / f"kaggle_{ctx}_{mdl}_{CACHE_FORMAT}_frames.parquet"
             if not fa.exists():
                 print(f"skip {ctx}/{mdl}: missing {fa.name}")
                 continue
@@ -222,8 +224,8 @@ def main():
                 dfa = dfa.merge(gait_lab, on=["session_id", "abs_frame"], how="left")
 
             thr_test = pr11_threshold(dfa["native_label"].values.astype(int), dfa["pred_prob_fog"].values)
-            thr_val = None
-            if kg.exists():
+            thr_val = args.fixed_threshold
+            if thr_val is None and kg.exists():
                 dfk = pd.read_parquet(kg)
                 thr_val = pr11_threshold(dfk["native_label"].values.astype(int), dfk["pred_prob_fog"].values)
 

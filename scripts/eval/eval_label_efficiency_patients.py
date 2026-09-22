@@ -7,7 +7,7 @@ full FogAtHome cohort (same protocol as the headline AP) and computes segment AP
 The all-patients anchor reuses the prior full-data checkpoints
 (labeleff_{arm}_mc_fold{f}_fullmin) — at K=all, the subset seed is irrelevant.
 
-Checkpoints from scripts/shell/run_label_efficiency_patients.sh:
+Checkpoints from the patient-level label-efficiency Hydra sweep:
     checkpoints/classification/labeleff_pat_{arm}_mc_fold{f}_k{K}_s{seed}/
 
 Output: logs/RESULTS_label_efficiency_patients.csv  (arm, k, seed, seg_ap, prevalence)

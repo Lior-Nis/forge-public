@@ -1,6 +1,6 @@
 """
 Fig 12 — compute the ICC-vs-fine-tuning-data-size curve from the checkpoints
-produced by scripts/shell/run_fogathome_finetune_curve.sh.
+produced by the corresponding Hydra experiment sweep.
 
 For each (fold, budget) it runs the fine-tuned MC model on that fold's held-out
 FogAtHome test patients, aggregates patch predictions to frames, and computes

@@ -1,0 +1,8 @@
+defaults:
+  - base
+  - _self_
+
+# Resampled from the public 128 Hz tDCS-FOG files by
+# scripts/data/resample_tdcsfog_100hz.py before zarr construction.
+input_dir: ${.raw_root}/kaggle_tdcs100
+dataset_path: len500_stride200_fogstride100_anyfog_tdcs100.zarr

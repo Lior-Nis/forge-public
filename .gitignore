@@ -1,54 +1,159 @@
-# Python
+/.vscode
+# Agentic working directory
+/agentic/
+/.codex
+
+# Private / internal research and writing
+/research/
+/research_directions/
+/thesis/
+/paper/
+/docs/notes/
+/4amit/
+
+# Experiment artifacts and outputs
+/artifacts/
+/checkpoints/
+/predictions/
+/multirun/
+/memory/
+
+# Loose result files
+*.pdf
+
+# Data directories
+/data/raw/kaggle_labeled/*
+/data/raw/new/*
+/data/raw_old/
+/data/raw/
+/data/raw/kaggle_daily/*
+data/raw
+/data/processed/*
+/data/aligned/kaggle_labeled/*
+/data/aligned/kaggle_labeled_event/*
+/data/aligned/*
+/data/dicts/*
+/data/metadata/*
+/data/caches/*
+/wandb
+/logs/
+/gitignore/*
+/t.ipynb
+/lightning_logs
+data/positive_indecis.pt
+temp.ipynb
+# Python cache directories
 __pycache__/
 *.py[cod]
-*.egg-info/
+*$py.class
+/caches/*
+/dataset_inspection_multichannel/*
+# Distribution / packaging
+.Python
 build/
+develop-eggs/
 dist/
+downloads/
+eggs/
 .eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Environments / secrets
-.venv/
-venv/
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Environments
 .env
-.env.*
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
-# Tool caches
-.pytest_cache/
-.ruff_cache/
+# mypy
 .mypy_cache/
-.ipynb_checkpoints/
+.dmypy.json
+dmypy.json
 
-# Data (download from Hugging Face; never commit)
-/data/raw
-/data/raw/
-/data/processed/
-/data/caches/
+# IDE
+.idea/
+.vscode/
 
-# Model weights and run outputs (released on Hugging Face)
-/checkpoints/
-/release/forge-fog/
-/release/staging/
+# Model checkpoints and artifacts
 *.ckpt
-*.pt
 *.pth
-/logs/
-/outputs/
-/multirun/
-/lightning_logs/
-/wandb/
-/artifacts/
-*.log
+*.pt
+*.weights
 
-# Author-private research material read by the [author-only] scripts
-/research/
+# Experiment outputs
+outputs/
+.hydra/
 
-# Agent tooling: only the two reproducibility skills are part of the release
+# Pre-commit
+.pre-commit-cache/
+
+# Security scan results
+bandit-report.json
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+
+# System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Claude instructions file
+CLAUDE.md
 /.claude/*
 !/.claude/skills/
 
-# OS / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.swp
+GEMINI.md
+
+/markdowns/*
+
+# Processed datasets (large zarr stores — regenerated locally, never committed)
+/data/processed/
+
+# SLURM and batch job files
+*.out
+slurm_outputs/
+batch_scripts/
+
+# Training logs
+*.log
+
+# FORGE release staging (slimmed checkpoint copies — never commit)
+/release/staging/

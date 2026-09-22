@@ -1,6 +1,0 @@
-defaults:
-  - base
-  - _self_
-
-input_dir: ${.raw_root}/fogstar
-dataset_path: len${..process.lengths.block_len}_stride${..process.lengths.stride_len}_fogstar.zarr

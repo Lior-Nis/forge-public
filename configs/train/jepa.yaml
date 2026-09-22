@@ -10,6 +10,7 @@ defaults:
   - trainer: fog_mae
   - _self_
 
+pipeline_target: pipeline.jepa.JEPAPipeline
 pipeline_type: "jepa"
 
 optimizer:

@@ -6,7 +6,7 @@ For each (arm, budget) it loads the 3 DeFOG-fold checkpoints, runs each on the
 full FogAtHome cohort, averages probabilities per window (3-fold ensemble — the
 same protocol as the headline numbers), and computes cls@50 AP and segment AP.
 
-Checkpoints from scripts/shell/run_label_efficiency.sh:
+Checkpoints from the label-efficiency Hydra sweep:
     checkpoints/classification/labeleff_{arm}_mc_fold{f}_{budget}min/
 Best-val-AP checkpoint is selected (not last.ckpt — on small budgets the head
 degrades by the final epoch).

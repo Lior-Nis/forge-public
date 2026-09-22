@@ -52,6 +52,7 @@ model:
     dropout: 0.3
 
 train:
+  pipeline_target: pipeline.segmentation.SegmentationPipeline
   pipeline_type: segmentation
 
   weights:
