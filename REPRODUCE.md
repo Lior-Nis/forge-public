@@ -32,8 +32,8 @@ If Windows shows a blue "protected your PC" box, click **More info → Run anywa
 ## Mac / Linux
 
 ```sh
-git clone https://github.com/Lior-Nis/forge.git
-cd forge
+git clone https://github.com/Lior-Nis/forge-public.git
+cd forge-public
 ./reproduce.sh
 ```
 

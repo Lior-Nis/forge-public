@@ -51,9 +51,9 @@ detection on the 57-participant DeFOG cohort only. Evaluated with no target-coho
 training on four external cohorts: FogAtHome-provoking, tDCS-FOG, Stanford and
 FogAtHome daily living.
 
-**Headline:** the released MC probe ensemble reaches clinical-grade agreement with expert
+**Headline:** the released nine-head frozen-encoder ensemble is evaluated against expert
 video annotation on an independent cohort — **ICC(%TF) = {icc['value']:.3f} [{icc['ci'][0]:.3f}, {icc['ci'][1]:.3f}]**,
-zero-shot, one IMU.
+using one lower-back IMU and no target-cohort training.
 
 ## External results (released detector)
 
@@ -100,13 +100,13 @@ model, config = load_released_model(
 
 Reproduce the four external cohorts with the companion repo's `./reproduce.sh` command
 (see `manifest.yaml`, shipped in this repo).
-Code: [github.com/Lior-Nis/forge](https://github.com/Lior-Nis/forge).
+Code: [github.com/Lior-Nis/forge-public](https://github.com/Lior-Nis/forge-public).
 Data: [{m['meta']['hf_dataset_repo']}](https://huggingface.co/datasets/{m['meta']['hf_dataset_repo']}).
 
 ## Intended use and limitations
 
 FORGE is a research model for evaluating freezing-of-gait methods on compatible
-lower-back accelerometer recordings. It is not a medical device and must not be
+lower-back accelerometer recordings. It is not clinically validated and is not a medical device and must not be
 used to diagnose, monitor, or make treatment decisions for an individual. The
 fixed threshold is cohort-sensitive: the Stanford result in particular shows
 that discrimination can survive a device/site shift while calibrated burden does
@@ -124,7 +124,7 @@ def dataset_card(m: dict) -> str:
     return f"""---
 license: other
 license_name: source-specific dataset terms
-license_link: https://github.com/Lior-Nis/forge/blob/main/DATASETS.md
+license_link: https://github.com/Lior-Nis/forge-public/blob/main/DATASETS.md
 tags: [freezing-of-gait, parkinsons, accelerometer]
 ---
 

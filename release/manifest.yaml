@@ -15,7 +15,7 @@ meta:
   license: MIT
   hf_weights_repo: Liornis/forge-fog
   hf_dataset_repo: Liornis/fog-dataset
-  hf_weights_revision: 154dbdf09a570e50eb256d218729f796519883bc
+  hf_weights_revision: 3997f782f7567db357ee5caf0b134729a292f835
   hf_dataset_revision: f24fab4a5c1c88e376813fa9b0ec7bf28b1b32d3
 encoders:
   lc:

@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 HF_WEIGHTS_REPO = "Liornis/forge-fog"
 HF_DATASET_REPO = "Liornis/fog-dataset"
-HF_WEIGHTS_REVISION = "154dbdf09a570e50eb256d218729f796519883bc"
+HF_WEIGHTS_REVISION = "3997f782f7567db357ee5caf0b134729a292f835"
 HF_DATASET_REVISION = "f24fab4a5c1c88e376813fa9b0ec7bf28b1b32d3"
 
 # --- Encoders (the released FORGE backbones) ---------------------------------

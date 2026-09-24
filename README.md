@@ -15,8 +15,8 @@ A PyTorch Lightning framework for detecting Freezing of Gait (FOG) episodes in P
 ## Installation
 
 ```bash
-git clone https://github.com/Lior-Nis/forge.git
-cd forge
+git clone https://github.com/Lior-Nis/forge-public.git
+cd forge-public
 uv sync --frozen   # or: pip install -e .
 ```
 
